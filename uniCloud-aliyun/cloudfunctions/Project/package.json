@@ -1,0 +1,12 @@
+{
+  "name": "Project",
+  "dependencies": {
+    "b_project": "file:../common/b_project",
+    "date": "file:../common/date",
+    "project-history": "file:../common/project-history",
+    "identified": "file:../common/identified"
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

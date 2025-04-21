@@ -1,0 +1,12 @@
+{
+  "name": "Sign",
+  "dependencies": {
+    "b_user": "file:../common/b_user",
+    "password": "file:../common/password",
+    "session-token": "file:../common/session-token",
+    "identified": "file:../common/identified"
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

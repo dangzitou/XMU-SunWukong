@@ -1,0 +1,17 @@
+{
+  "name": "mark_request_as_read",
+  "version": "1.0.0",
+  "description": "标记申请消息为已读",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "DiYGW",
+  "license": "ISC",
+  "dependencies": {},
+  "cloudfunction-config": {
+    "memorySize": 128,
+    "timeout": 5,
+    "path": "/api/mark_request_as_read"
+  }
+} 

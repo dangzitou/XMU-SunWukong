@@ -1,0 +1,225 @@
+{
+	"pages": [
+		{
+			"path": "pages/home",
+			"style": {
+				"navigationBarTitleText": "首页",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/profile/main_page",
+			"style": {
+				"navigationBarTitleText": "个人主页",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/sign/login",
+			"style": {
+				"navigationBarTitleText": "登录",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/sign/register",
+			"style": {
+				"navigationBarTitleText": "注册",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/project/main_page",
+			"style": {
+				"navigationBarTitleText": "项目广场",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/project/project_detail",
+			"style": {
+				"navigationBarTitleText": "项目详情",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/project/add",
+			"style": {
+				"navigationBarTitleText": "创建项目",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/project/edit",
+			"style": {
+				"navigationBarTitleText": "更新项目",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/project/user_detail",
+			"style": {
+				"navigationBarTitleText": "他人主页的项目列表",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/project/member_action",
+			"style": {
+				"navigationBarTitleText": "项目人员操作",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/user/list",
+			"style": {
+				"navigationBarTitleText": "用户列表/导师",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/news/list",
+			"style": {
+				"navigationBarTitleText": "新闻列",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/news/detail",
+			"style": {
+				"navigationBarTitleText": "新闻详情",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/message/main_page",
+			"style": {
+				"navigationBarTitleText": "消息中心",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/competition/list",
+			"style": {
+				"navigationBarTitleText": "竞赛列表",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/project/detail/competition_detail",
+			"style": {
+				"navigationBarTitleText": "竞赛详情",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/competition/add_project",
+			"style": {
+				"navigationBarTitleText": "发布竞赛招募",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/in_project/self",
+			"style": {
+				"navigationBarTitleText": "我发起的项目",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/project/detail/self",
+			"style": {
+				"navigationBarTitleText": "项目详情（自身）",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/in_project/others",
+			"style": {
+				"navigationBarTitleText": "加入的项目",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/project/detail/others",
+			"style": {
+				"navigationBarTitleText": "项目详情",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/webview",
+			"style": {
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "pages/competition/detail",
+			"style": {
+				"navigationBarTitleText": "竞赛详情"
+			}
+		},
+		{
+			"path": "pages/message/invite_detail",
+			"style": {
+				"navigationBarTitleText": "邀请消息详情",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/message/request_detail",
+			"style": {
+				"navigationBarTitleText": "申请消息详情",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/message/system_detail",
+			"style": {
+				"navigationBarTitleText": "系统消息详情",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		}
+	],
+	"tabBar": {
+		"custom": false,
+		"color": "#7A7E83",
+		"selectedColor": "#07c160",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "black",
+		"height": "70px",
+		"fontSize": "14px",
+		"iconWidth": "36px",
+		"list": [
+			{
+				"pagePath": "pages/home",
+				"iconPath": "/static/tabBar/home.png",
+				"selectedIconPath": "/static/tabBar/home(selected).png",
+				"text": "首页"
+			},
+			{
+				"pagePath": "pages/project/main_page",
+				"iconPath": "/static/tabBar/project.png",
+				"selectedIconPath": "/static/tabBar/project(selected).png",
+				"text": "项目"
+			},
+			{
+				"pagePath": "pages/message/main_page",
+				"iconPath": "/static/tabBar/message.png",
+				"selectedIconPath": "/static/tabBar/message(selected).png",
+				"text": "消息"
+			},
+			{
+				"pagePath": "pages/profile/main_page",
+				"iconPath": "/static/tabBar/personal.png",
+				"selectedIconPath": "/static/tabBar/personal(selected).png",
+				"text": "我"
+			}
+		]
+	},
+	"globalStyle": {
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "撮合（设计版）- 手机端(邓梓滔)",
+		"navigationBarBackgroundColor": "#07c160"
+	}
+}

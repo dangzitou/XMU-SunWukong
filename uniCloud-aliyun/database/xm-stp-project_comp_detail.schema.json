@@ -1,0 +1,69 @@
+{
+	"bsonType": "object",
+	"required": ["_id", "organizers", "title", "description"],
+	"permission": {
+		"read": true,
+		"create": true,
+		"update": true,
+		"delete": true
+	},
+	"properties": {
+		"_id": {
+			"title": "项目id",
+			"description": "项目ID",
+			"foreignKey": "xm-stp-project._id",
+			"enum": {
+				"collection": "xm-stp-project",
+				"field": "_id as value"
+			}
+		},
+		"organizers": {
+			"bsonType": "string",
+			"title": "主办方",
+			"description": "主办方（可以以，分割）",
+			"minLength": 1,
+			"maxLength": 500
+		},
+		"contractors": {
+			"bsonType": "string",
+			"title": "承办方",
+			"description": "承办方（可以以，分割）",
+			"minLength": 1,
+			"maxLength": 500
+		},
+		"title": {
+			"bsonType": "string",
+			"title": "主题",
+			"description": "项目主题",
+			"minLength": 1,
+			"maxLength": 50
+		},
+		"description": {
+			"bsonType": "string",
+			"title": "详情",
+			"description": "项目详情"
+		},
+		"current_team_request_pending": {
+			"bsonType": "int",
+			"title": "现有团队正寻找队伍",
+			"description": "现有团队正在寻找队伍的数量",
+			"default": 0,
+			"minimum": 0
+		},
+		"team_completed_enroll": {
+			"bsonType": "int",
+			"title": "现有团队已成功报名",
+			"description": "现有团队已成功报名的数量",
+			"default": 0,
+			"minimum": 0
+		},
+		"create_time": {
+			"bsonType": "timestamp",
+			"title": "创建时间",
+			"description": "项目的创建时间",
+			"forceDefaultValue": {
+				"$env": "now"
+			}
+		}
+	}
+}

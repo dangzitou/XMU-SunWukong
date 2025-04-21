@@ -1,0 +1,1 @@
+{"bsonType":"object","required":["name"],"permission":{"read":true,"create":true,"update":true,"delete":true},"properties":{"_id":{"description":"ID，系统自动生成","title":"学院id"},"name":{"bsonType":"string","title":"学院","description":"学院名称","minLength":1,"maxLength":100}}}

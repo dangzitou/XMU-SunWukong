@@ -1,0 +1,77 @@
+{
+    "bsonType": "object",
+    "required": [
+        "type_id",
+        "status",
+        "ending_time"
+    ],
+    "permission": {
+        "read": true,
+        "create": false,
+        "update": true,
+        "delete": false
+    },
+    "properties": {
+        "_id": {
+            "title": "项目id",
+            "description": "项目ID"
+        },
+        "type_id": {
+            "bsonType": "string",
+            "title": "项目类型",
+            "description": "项目的类型",
+            "foreignKey": "xm-stp-project_cat._id",
+            "enum": {
+                "collection": "xm-stp-project_cat",
+                "field": "_id as value, title as text"
+            }
+        },
+        "status": {
+            "bsonType": "int",
+            "title": "项目状态",
+            "description": "项目现有的状态（0为草稿箱，1为正常，2为已废弃，3为已完成）",
+            "enum": [
+                {
+                    "value": 0,
+                    "text": "草稿箱"
+                },
+                {
+                    "value": 1,
+                    "text": "正常"
+                },
+                {
+                    "value": 2,
+                    "text": "已废弃"
+                },
+                {
+                    "value": 3,
+                    "text": "已完成"
+                }
+            ]
+        },
+        "competition_id": {
+            "bsonType": "string",
+            "title": "竞赛项目ID",
+            "description": "是否属于某个竞赛项目（默认为0）",
+            "foreignKey": "xm-stp-project_competition_detail._id"
+        },
+        "user_id": {
+            "bsonType": "string",
+            "title": "用户id",
+            "foreignKey": "xm-stp-user_detail._id"
+        },
+        "create_time": {
+            "bsonType": "timestamp",
+            "title": "创建时间",
+            "description": "项目的创建时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+        },
+        "ending_time": {
+            "bsonType": "timestamp",
+            "title": "已结束时间",
+            "description": "项目的结束时间"
+        }
+    }
+}

@@ -1,0 +1,98 @@
+// 文档教程: https://uniapp.dcloud.net.cn/uniCloud/schema
+{
+	"bsonType": "object",
+	"required": ["title","description","status","type"],
+	"permission": {
+		"read": true,
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"properties": {
+		"_id": {
+			"title":"通知id",
+			"description": "ID"
+		},
+		"title":{
+			"bsonType": "string",
+			"title":"主题"
+		},
+		"description":{
+			"bsonType": "string",
+			"title":"详情"
+		},
+		"status":{
+			"bsonType": "int",
+			"title":"状态",
+			"description": "通知现有的状态（0为草稿箱，1为正常，2为已废弃）",
+			"defaultValue":0,
+			"enum" : [
+				{
+					"value":0,
+					"text":"草稿箱"
+				},
+				{
+					"value":1,
+					"text":"正常"
+				},
+				{
+					"value":2,
+					"text":"已废弃"
+				}
+			]
+		},
+		"type":{
+			"bsonType":"int",
+			"title":"类型",
+			"description":"该通知传播的类型（0为所有人，1为学院，2为针对用户，3为导师，4为本科生，5为硕士，6为博士）",
+			"enum":[
+				{
+					"value":0,
+					"text":"所有人"
+				},
+				{
+					"value":1,
+					"text":"学院"
+				},
+				{
+					"value":2,
+					"text":"针对用户"
+				},
+				{
+					"value":3,
+					"text":"导师"
+				},
+				{
+					"value":4,
+					"text":"本科生"
+				},
+				{
+					"value":5,
+					"text":"硕士"
+				},
+				{
+					"value":6,
+					"text":"博士"
+				}
+			]
+		},
+		"type_id":{
+			"bsonType": "array",
+			"title":"类型的id",
+			"description": "针对于学院或者项目类他们指定的id",
+			// "foreignKey": "xm-stp-college_cat._id",
+			// "enum":{
+			// 	"collection": "xm-stp-college_cat",
+			// 	"field":"_id as value, name as text"
+			// }
+		},
+		"create_time": {
+			"bsonType": "timestamp",
+			"title": "创建时间",
+			"description": "通知的创建时间",
+			"forceDefaultValue": {
+				"$env": "now"
+			}
+		}
+	}
+}

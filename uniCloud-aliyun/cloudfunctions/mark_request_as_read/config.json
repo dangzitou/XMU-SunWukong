@@ -1,0 +1,20 @@
+{
+  "bsonType": "object",
+  "required": ["request_id", "user_id"],
+  "permission": {
+    "read": true,
+    "create": true,
+    "update": true,
+    "delete": true
+  },
+  "properties": {
+    "request_id": {
+      "bsonType": "string",
+      "description": "申请记录ID"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID"
+    }
+  }
+} 

@@ -1,0 +1,7 @@
+{
+  "name": "back_project_get",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

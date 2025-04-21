@@ -1,0 +1,60 @@
+{
+    "bsonType": "object",
+    "required": [
+        "username",
+        "password"
+    ],
+    "permission": {
+        "read": false,
+        "create": true,
+        "update": false,
+        "delete": false
+    },
+    "properties": {
+        "_id": {
+            "description": "ID，系统自动生成",
+            "title": "用户id"
+        },
+        "username": {
+            "bsonType": "string",
+            "title": "用户名",
+            "description": "用户名",
+            "minLength": 2,
+            "maxLength": 255,
+            "unique": true
+        },
+        "password": {
+            "bsonType": "password",
+            "title": "密码"
+        },
+        "uploaded_project": {
+            "bsonType": "int",
+            "title": "已上传多少项目",
+            "description": "用户已上传项目数量",
+            "default": 0,
+            "minimum": 0
+        },
+        "pending_invited_project": {
+            "bsonType": "int",
+            "title": "当前是否有被邀请加入项目",
+            "description": "是否有邀请加入项目",
+            "default": 0,
+            "minimum": 0
+        },
+        "invited_project_history": {
+            "bsonType": "int",
+            "title": "被邀请加入项目的总次数",
+            "description": "被邀请加入项目的历史总次数",
+            "default": 0,
+            "minimum": 0
+        },
+        "create_time": {
+            "bsonType": "timestamp",
+            "title": "创建时间",
+            "description": "用户创建时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+        }
+    }
+}

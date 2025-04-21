@@ -1,0 +1,10 @@
+{
+  "name": "Competition",
+  "dependencies": {
+    "b_project": "file:../common/b_project",
+    "timestamp": "file:../common/timestamp"
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

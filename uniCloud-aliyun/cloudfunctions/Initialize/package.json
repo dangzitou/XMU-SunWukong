@@ -1,0 +1,9 @@
+{
+  "name": "Initialize",
+  "dependencies": {
+    "timestamp": "file:../common/timestamp"
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

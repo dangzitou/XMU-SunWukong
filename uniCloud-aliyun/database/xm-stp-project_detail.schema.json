@@ -1,0 +1,94 @@
+{
+    "bsonType": "object",
+    "required": [
+        "user_id",
+        "title",
+        "description"
+    ],
+    "permission": {
+        "read": true,
+        "create": "auth.uid != null",
+        "update": "auth.uid != null",
+        "delete": "auth.uid != null"
+    },
+    "properties": {
+        "_id": {
+            "title": "项目id",
+            "description": "项目ID",
+            "foreignKey": "xm-stp-project._id"
+        },
+        "user_id": {
+            "bsonType": "string",
+            "title": "用户id",
+            "description": "关联的用户ID",
+            "foreignKey": "xm-stp-user_detail._id",
+            "enum": {
+                "collection": "xm-stp-user_detail",
+                "field": "_id as value, real_name as text"
+            }
+        },
+        "title": {
+            "bsonType": "string",
+            "title": "主题",
+            "description": "项目主题",
+            "minLength": 1,
+            "maxLength": 50
+        },
+        "description": {
+            "bsonType": "string",
+            "title": "详情",
+            "description": "项目详情"
+        },
+        "person_needed": {
+            "bsonType": "int",
+            "title": "需要人员",
+            "description": "项目所需人员",
+            "minimum": 1
+        },
+        "current_person_request": {
+            "bsonType": "int",
+            "title": "现有申请人",
+            "description": "现有申请人的数量",
+            "default": 0,
+            "minimum": 0
+        },
+        "current_members": {
+            "bsonType": "int",
+            "title": "已招募人员",
+            "description": "已招募人员的数量",
+            "default": 0,
+            "minimum": 0
+        },
+        "user_type": {
+            "bsonType": "int",
+            "title": "用户类型",
+            "description": "用户类型（0为老师，之后为学是）",
+            "enum": [
+                {
+                    "value": 0,
+                    "text": "老师"
+                },
+                {
+                    "value": 1,
+                    "text": "本科生"
+                },
+                {
+                    "value": 2,
+                    "text": "硕士（研究生）"
+                },
+                {
+                    "value": 3,
+                    "text": "博士（研究生）"
+                }
+            ]
+        },
+        "create_time": {
+            "bsonType": "timestamp",
+            "title": "创建时间",
+            "description": "项目的创建时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+        }
+    }
+}

@@ -1,0 +1,11 @@
+{
+	"name": "get_message_count",
+	"version": "1.0.0",
+	"description": "获取用户的未读消息计数",
+	"main": "index.js",
+	"author": "",
+	"license": "ISC",
+	"extensions": {
+		"uni-cloud-jql": {}
+	}
+} 

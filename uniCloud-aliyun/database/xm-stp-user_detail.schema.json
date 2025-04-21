@@ -1,0 +1,88 @@
+{
+    "bsonType": "object",
+    "required": [
+        "real_name",
+        "school_id",
+        "type",
+        "onboarding_year",
+        "user_academy_category_id",
+        "user_department_category_id"
+    ],
+    "permission": {
+        "read": true,
+        "create": false,
+        "update": false,
+        "delete": false
+    },
+    "properties": {
+        "_id": {
+            "title": "用户id",
+            "description": "用户ID"
+        },
+        "avatar": {
+            "bsonType": "string",
+            "title": "用户头像",
+            "description": "用户头像的URL或路径"
+        },
+        "real_name": {
+            "bsonType": "string",
+            "title": "真实名字",
+            "description": "用户的真实名字",
+            "minLength": 2,
+            "maxLength": 100
+        },
+        "school_id": {
+            "bsonType": "int",
+            "title": "学校id",
+            "description": "学生为学号，老师为导师号"
+        },
+        "type": {
+            "bsonType": "int",
+            "title": "用户类型",
+            "description": "用户类型（0为老师，之后为学是）",
+            "enum": [
+                {
+                    "value": 0,
+                    "text": "老师"
+                },
+                {
+                    "value": 1,
+                    "text": "本科生"
+                },
+                {
+                    "value": 2,
+                    "text": "硕士（研究生）"
+                },
+                {
+                    "value": 3,
+                    "text": "博士（研究生）"
+                }
+            ]
+        },
+        "onboarding_year": {
+            "bsonType": "int",
+            "title": "入职\/入学年份",
+            "description": "用户的入职或入学年份"
+        },
+        "college_category_id": {
+            "bsonType": "string",
+            "title": "学院id",
+            "description": "关联的学院ID",
+            "foreignKey": "xm-stp-college_cat._id",
+            "enum": {
+                "collection": "xm-stp-college_cat",
+                "field": "_id as value, name as text"
+            }
+        },
+        "specific_category_id": {
+            "bsonType": "string",
+            "title": "科系id",
+            "description": "关联的科系ID",
+            "foreignKey": "xm-stp-specific_cat._id",
+            "enum": {
+                "collection": "xm-stp-specific_cat",
+                "field": "_id as value, name as text, college_id as isleaf"
+            }
+        }
+    }
+}

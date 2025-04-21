@@ -1,0 +1,9 @@
+{
+  "name": "User",
+  "dependencies": {
+    "identified": "file:../common/identified"
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

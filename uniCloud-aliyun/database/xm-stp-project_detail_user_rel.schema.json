@@ -1,0 +1,61 @@
+// 文档教程: https://uniapp.dcloud.net.cn/uniCloud/schema
+{
+	"bsonType": "object",
+	"required": ["user_id","project_id","project_position"],
+	"permission": {
+		"read": false,
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"properties": {
+		"_id": {
+			"description": "ID，系统自动生成"
+		},
+		"user_id": {
+			"bsonType": "string",
+			"title": "用户id",
+			"description": "关联的用户ID",
+			"foreignKey": "xm-stp-user_detail._id",
+			"enum": {
+				"collection": "xm-stp-user_detail",
+				"field": "_id as value, real_name as text"
+			}
+		},
+		"project_id": {
+			"bsonType": "string",
+			"title": "项目详情id",
+			"description": "关联的项目ID",
+			"foreignKey": "xm-stp-project_detail._id"
+		},
+		"project_position":{
+			"bsonType": "int",
+			"title":"项目中的位置（或状态）",
+			"description": "位置【0：指导老师，1：项目负责人，2：成员，3：待定成员】",
+			"enum":[
+				{
+					"value":0,
+					"text":"指导老师"
+				},
+				{
+					"value":1,
+					"text":"项目负责人"
+				},
+				{
+					"value":2,
+					"text":"成员"
+				},
+				{
+					"value":3,
+					"text":"待定成员"
+				}
+			]
+		},
+		"has_invite_permission": {
+			"bsonType": "bool",
+			"title": "是否有邀请权限",
+			"description": "该成员是否有权邀请其他人加入项目",
+			"defaultValue": false
+		}
+	}
+}

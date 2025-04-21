@@ -1,0 +1,35 @@
+/* 全局按钮样式 */
+.global-button {
+  background-color: #07c160 !important; /* 绿色 */
+  color: #ffffff !important;
+  border-radius: 50rpx !important;
+  font-size: 32rpx !important;
+  height: 90rpx !important;
+  line-height: 90rpx !important;
+  margin: 0 auto !important;
+  width: 100% !important;
+  border: none !important;
+  position: relative !important;
+  text-align: center !important;
+  padding: 0 20rpx !important;
+  transition: all 0.3s ease !important;
+}
+
+.global-button:active {
+  opacity: 0.8 !important;
+  transform: scale(0.98) !important;
+}
+
+/* 针对不需要100%宽度的按钮 */
+.global-button-inline {
+  width: auto !important;
+  display: inline-block !important;
+  padding: 0 40rpx !important;
+}
+
+/* 较小的按钮 */
+.global-button-small {
+  height: 70rpx !important;
+  line-height: 70rpx !important;
+  font-size: 28rpx !important;
+} 

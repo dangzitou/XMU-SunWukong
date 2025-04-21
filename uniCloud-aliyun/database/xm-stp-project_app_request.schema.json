@@ -1,0 +1,61 @@
+{
+    "bsonType": "object",
+    "required": [
+        "user_id",
+        "project_id",
+        "comment"
+    ],
+    "permission": {
+        "read": true,
+        "create": false,
+        "update": "doc.user_id == auth.uid || doc.project_id == auth.project_id || 'admin' in auth.role",
+        "delete": false
+    },
+    "properties": {
+        "_id": {
+            "description": "ID，系统自动生成"
+        },
+        "user_id": {
+            "bsonType": "string",
+            "title": "用户ID",
+            "description": "用户ID",
+            "foreignKey": "xm-stp-user._id"
+        },
+        "project_id": {
+            "bsonType": "string",
+            "title": "项目ID",
+            "description": "项目ID",
+            "foreignKey": "xm-stp-project_detail._id"
+        },
+        "comment": {
+            "bsonType": "string",
+            "title": "备注",
+            "description": "备注",
+            "maxLength": 500
+        },
+        "status": {
+            "bsonType": "int",
+            "title": "状态",
+            "description": "状态【0:等待回复，1:已接受，2:已拒绝，3:申请者未读，4:申请者已读】"
+        },
+        "result": {
+            "bsonType": "int",
+            "title": "处理结果",
+            "description": "处理结果【1:已接受，2:已拒绝】，用于status为3或4时记录实际处理结果"
+        },
+        "create_time": {
+            "bsonType": "timestamp",
+            "title": "创建时间",
+            "description": "创建时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+        },
+        "reject_reason": {
+            "bsonType": "string",
+            "title": "拒绝理由",
+            "description": "拒绝理由",
+            "maxLength": 500
+        }
+    }
+}
