@@ -3,8 +3,8 @@
   "required": ["user_id", "project_id", "title", "content", "type", "status"],
   "permission": {
     "read": "true",
-    "create": "false",
-    "update": "false", 
+    "create": "'admin' in auth.role",
+    "update": "'admin' in auth.role",
     "delete": "false"
   },
   "properties": {
@@ -57,4 +57,4 @@
       "description": "阅读时间"
     }
   }
-} 
+}

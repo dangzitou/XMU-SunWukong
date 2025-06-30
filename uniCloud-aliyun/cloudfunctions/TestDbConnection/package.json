@@ -1,0 +1,11 @@
+{
+	"name": "TestDbConnection",
+	"version": "1.0.0",
+	"description": "测试数据库连接和表操作的云函数",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "",
+	"license": "ISC"
+}

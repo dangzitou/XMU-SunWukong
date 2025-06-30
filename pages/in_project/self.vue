@@ -6,7 +6,7 @@
 			<text class="empty-text">暂无发起的项目，请点击"+"号创建</text>
 		</view>
 		<!-- 项目列表 -->
-		<view v-else v-for="(item, index) in globalData.list" :key="index" 
+		<view v-else v-for="(item, index) in globalData.list" :key="index"
 			class="flex flex-wrap diygw-col-24 flex-direction-column flex7-clz"
 			@tap="navigateToProjectDetail(item)">
 			<view class="flex flex-wrap diygw-col-24 items-stretch">
@@ -16,37 +16,17 @@
 					</view>
 					<view class="flex flex-wrap diygw-col-0 items-center flex10-clz">
 						<text class="diygw-col-0 text4-clz"></text>
-						<image :src="item.creator_avatar || item.avatar?.url || '/static/team-1.jpg'" class="image1-size diygw-image diygw-col-0 image1-clz" mode="widthFix"></image>
+						<image :src="getCreatorAvatar(item)" class="image1-size diygw-image diygw-col-0 image1-clz" mode="widthFix"></image>
 						<text class="diygw-col-0 text6-clz">{{ item.creator_type || (item.type === 'teacher' ? '导师发起' : '学生发起') }}</text>
 						<text class="diygw-col-0 text6-clz">{{ item.project_cat?.name || item.type || '科技创新' }}</text>
 					</view>
 				</view>
-				<image :src="getProjectTypeImage(item.project_cat?.name || item.type)" class="image2-size diygw-image diygw-col-0 image2-clz" mode="widthFix"></image>
+				<image :src="getProjectImage(item)" class="image2-size diygw-image diygw-col-0 image2-clz" mode="widthFix"></image>
 			</view>
 			<view class="flex flex-wrap diygw-col-24 justify-between items-center flex12-clz">
-				<view class="flex flex-wrap diygw-col-0 items-center">
-					<text class="diygw-col-0">要求：</text>
-					<template v-if="getRequirements(item).length > 0">
-						<text v-for="(requirement, idx) in getRequirements(item)" :key="idx"
-							:class="['diygw-col-0', idx === 0 ? 'text8-clz' : idx === 1 ? 'text-clz' : 'text9-clz']">
-							{{ requirement }}
-						</text>
-					</template>
-					<template v-else-if="item.requirements && item.requirements.split(',').length">
-						<text v-for="(req, reqIndex) in item.requirements.split(',')" :key="reqIndex" 
-							:class="['diygw-col-0', reqIndex === 0 ? 'text8-clz' : reqIndex === 1 ? 'text-clz' : 'text9-clz']">
-							{{ req }}
-						</text>
-					</template>
-					<template v-else-if="item.tags && item.tags.length">
-						<text v-for="(tag, tagIndex) in item.tags" :key="tagIndex" 
-							:class="['diygw-col-0', tagIndex === 0 ? 'text8-clz' : tagIndex === 1 ? 'text-clz' : 'text9-clz']">
-							{{ tag }}
-						</text>
-					</template>
-					<template v-else>
-						<text class="diygw-col-0 text8-clz">{{ item.type || '项目协作' }}</text>
-					</template>
+				<view class="flex flex-wrap diygw-col-0 items-center description-container">
+					<text class="diygw-col-0">简介：</text>
+					<text class="diygw-col-0 description-text">{{ getProjectDescription(item) }}</text>
 				</view>
 				<view class="flex flex-wrap diygw-col-0 items-center">
 					<text class="flex icon diygw-col-0 diy-icon-attention"></text>
@@ -62,7 +42,7 @@
 				</view>
 			</view>
 		</view>
-		
+
 		<view class="flex diygw-col-0 right-bottom floatbar-clz">
 			<view class="diygw-grid diygw-actions">
 				<button class="diygw-action" @tap="navigateTo" data-type="page" data-url="/pages/project/add">
@@ -73,7 +53,7 @@
 				</button>
 			</view>
 		</view>
-		
+
 		<view class="clearfix"></view>
 	</view>
 </template>
@@ -95,6 +75,8 @@
 					'科研招募': '/static/dc.png',
 					'大创计划': '/static/cxcp.png'
 				},
+				projectImages: {}, // 存储项目ID到图片URL的映射
+				creatorAvatars: {}, // 存储项目ID到创建者头像的映射
 				isLoading: false
 			};
 		},
@@ -139,7 +121,7 @@
 				try {
 					this.isLoading = true;
 					console.log('准备获取用户发起的项目列表...');
-					
+
 					// 检查用户登录状态
 					if (!this.$session.getToken()) {
 						console.log('用户未登录，无法获取项目列表');
@@ -149,7 +131,7 @@
 						});
 						return;
 					}
-					
+
 					// 获取用户ID
 					const userId = this.$session.getUserValue('user_id');
 					if (!userId) {
@@ -157,18 +139,18 @@
 						this.isLoading = false;
 						return;
 					}
-					
+
 					// 获取用户发起的项目
 					console.log('获取用户发起的项目，用户ID:', userId);
 					const res = await uniCloud.importObject('ProjectAction').getSelf({
 						user_id: userId
 					});
-					
+
 					console.log('API返回数据:', JSON.stringify(res.data));
-					
+
 					if (res.status === 1 && Array.isArray(res.data) && res.data.length > 0) {
 						console.log(`API返回了${res.data.length}个项目记录`);
-						
+
 						// 处理每个项目数据，确保所有计数字段都是数字
 						const projectList = res.data.map(item => {
 							// 确保current_members存在且为数字
@@ -177,75 +159,212 @@
 							} else if (typeof item.current_members === 'string') {
 								item.current_members = parseInt(item.current_members || 0);
 							}
-							
+
 							// 确保current_person_request存在且为数字
 							if (item.current_person_request === undefined) {
 								item.current_person_request = parseInt(item.person_request || 0);
 							} else if (typeof item.current_person_request === 'string') {
 								item.current_person_request = parseInt(item.current_person_request || 0);
 							}
-							
+
 							// 确保person_needed为数字
 							if (item.person_needed !== undefined) {
 								item.person_needed = parseInt(item.person_needed || 0);
 							}
-							
+
 							console.log(`项目 ${item._id}: ${item.title} - 成员数: ${item.current_members}, 申请数: ${item.current_person_request}, 需要人数: ${item.person_needed}`);
-							
+
 							return {
 								...item,
 								project_id: item._id || item.project_id
 							};
 						});
-						
+
 						this.globalData.list = projectList;
+
+						// 获取所有项目ID
+						const projectIds = projectList.map(project => project._id || project.project_id);
+
+						// 批量获取项目图片
+						await this.loadProjectImages(projectIds);
+
+						// 批量获取创建者头像
+						await this.loadCreatorAvatars(projectIds);
 					} else {
 						console.log('API返回的数据不是数组或为空');
 						this.globalData.list = [];
 					}
-					
+
 					this.isLoading = false;
 				} catch (error) {
 					console.error('获取发起的项目列表失败:', error);
 					this.isLoading = false;
-					
+
 					uni.showToast({
 						title: '加载失败，请重试',
 						icon: 'none'
 					});
 				}
 			},
-			
+
+			// 新增: 获取项目图片的方法
+			async loadProjectImages(projectIds) {
+				if (!projectIds || projectIds.length === 0) return;
+
+				try {
+					// 批量处理项目，每10个为一组
+					const batchSize = 10;
+					for (let i = 0; i < projectIds.length; i += batchSize) {
+						const batchIds = projectIds.slice(i, i + batchSize);
+
+						// 并行获取这一批项目的图片
+						const promises = batchIds.map(async (projectId) => {
+							if (!projectId) return { projectId, success: false };
+
+							try {
+								const result = await uniCloud.importObject('ProjectAction').getProjectImages({
+									project_id: projectId
+								});
+
+								if (result.status === 1 && result.data && result.data.length > 0) {
+									// 保存第一张图片的URL
+									this.projectImages[projectId] = result.data[0].tempFileURL;
+									return { projectId, success: true };
+								}
+								return { projectId, success: false };
+							} catch (error) {
+								console.error(`获取项目 ${projectId} 图片失败:`, error);
+								return { projectId, success: false };
+							}
+						});
+
+						await Promise.all(promises);
+					}
+
+					console.log('所有项目图片加载完成:', Object.keys(this.projectImages).length);
+				} catch (error) {
+					console.error('批量加载项目图片失败:', error);
+				}
+			},
+
+			// 批量获取创建者头像
+			async loadCreatorAvatars(projectIds) {
+				if (!projectIds || projectIds.length === 0) return;
+
+				try {
+					console.log('开始获取创建者头像');
+					// 批量处理项目，每5个为一组
+					const batchSize = 5;
+					for (let i = 0; i < projectIds.length; i += batchSize) {
+						const batchIds = projectIds.slice(i, i + batchSize);
+
+						// 并行获取这一批项目的创建者信息
+						const promises = batchIds.map(async (projectId) => {
+							if (!projectId) return { projectId, success: false };
+
+							try {
+								const result = await uniCloud.importObject('ProjectAction').getProjectCreator({
+									project_id: projectId
+								});
+
+								if (result && result.status === 1 && result.data) {
+									console.log(`获取项目 ${projectId} 创建者信息成功:`, result.data);
+									// 保存创建者头像
+									if (result.data.avatar) {
+										this.creatorAvatars[projectId] = result.data.avatar;
+
+										// 更新对应项目的创建者信息
+										const projectIndex = this.globalData.list.findIndex(p => (p._id === projectId || p.project_id === projectId));
+										if (projectIndex !== -1) {
+											this.globalData.list[projectIndex].creator_name = result.data.nickname || result.data.username || '未知用户';
+											this.globalData.list[projectIndex].creator_avatar = result.data.avatar;
+											this.globalData.list[projectIndex].creator_intro = result.data.introduction || '';
+										}
+
+										return { projectId, success: true };
+									}
+								}
+								return { projectId, success: false };
+							} catch (error) {
+								console.error(`获取项目 ${projectId} 创建者信息失败:`, error);
+								return { projectId, success: false };
+							}
+						});
+
+						await Promise.all(promises);
+					}
+
+					console.log('所有创建者头像加载完成:', Object.keys(this.creatorAvatars).length);
+					this.$forceUpdate(); // 强制更新视图
+				} catch (error) {
+					console.error('批量加载创建者头像失败:', error);
+				}
+			},
+
+			// 获取项目创建者头像
+			getCreatorAvatar(item) {
+				if (!item) return '/static/profile/default.png';
+
+				const projectId = item._id || item.project_id;
+
+				// 优先使用已经获取到的creator_avatar属性
+				if (item.creator_avatar) {
+					return item.creator_avatar;
+				}
+
+				// 其次使用缓存的创建者头像
+				if (projectId && this.creatorAvatars[projectId]) {
+					return this.creatorAvatars[projectId];
+				}
+
+				// 最后使用默认头像
+				return '/static/profile/default.png';
+			},
+
+			// 修改: 获取项目图片的方法，优先使用项目图片
+			getProjectImage(item) {
+				if (!item) return '/static/cxcp.png';
+
+				const projectId = item._id || item.project_id;
+				if (projectId && this.projectImages[projectId]) {
+					return this.projectImages[projectId];
+				}
+
+				// 如果没有项目图片，使用分类图标
+				const categoryName = item.project_cat?.name;
+				return this.projectTypeImages[categoryName] || '/static/cxcp.png';
+			},
+
 			// 返回时间和是否过期 自定义方法
 			endingDateReturnFunction(param) {
 				try {
 					if (!param || !param.ending_time) {
 						return '未设置';
 					}
-					
+
 					console.log('原始ending_time:', param.ending_time, typeof param.ending_time);
-					
+
 					let ending_time = param && (param.ending_time || param.ending_time == 0) ? param.ending_time : '';
 					var date = this.$tools.formatDateTime(ending_time, 'YYYY-mm-dd HH:MM');
-					
+
 					// 获取当前时间的字符串表示
 					const now = this.$tools.getCurrentDateTime();
-					
+
 					// 比较是否过期
 					const isExpired = date < now;
-					
+
 					return date + (isExpired ? '(已过期)' : '');
 				} catch (error) {
 					console.error('日期格式化错误:', error, param);
 					return '日期格式错误';
 				}
 			},
-			
+
 			// 获取项目类型对应的图标
 			getProjectTypeImage(type) {
 				return this.projectTypeImages[type] || '/static/cxcp.png';
 			},
-			
+
 			// 获取项目要求
 			getRequirements(item) {
 				const requirements = [];
@@ -254,7 +373,37 @@
 				if (item.skills) requirements.push(item.skills);
 				return requirements;
 			},
-			
+
+			// 获取项目描述文本
+			getProjectDescription(item) {
+				// 优先使用项目详情中的description字段
+				if (item.detail && item.detail.description) {
+					// 移除HTML标签，只保留纯文本
+					const plainText = item.detail.description.replace(/<[^>]+>/g, '');
+					return plainText.length > 50 ? plainText.substring(0, 50) + '...' : plainText;
+				}
+
+				// 直接使用description字段
+				if (item.description) {
+					// 移除HTML标签，只保留纯文本
+					const plainText = item.description.replace(/<[^>]+>/g, '');
+					return plainText.length > 50 ? plainText.substring(0, 50) + '...' : plainText;
+				}
+
+				// 其次使用content_text字段
+				if (item.content_text) {
+					return item.content_text.length > 50 ? item.content_text.substring(0, 50) + '...' : item.content_text;
+				}
+
+				// 最后使用项目要求作为备选
+				const requirements = this.getRequirements(item);
+				if (requirements.length > 0) {
+					return requirements.join('、');
+				}
+
+				return '暂无项目描述';
+			},
+
 			// 导航到项目详情页面
 			navigateToProjectDetail(item) {
 				// 跳转到项目详情页面
@@ -267,7 +416,7 @@
 						console.error('跳转到项目详情页失败:', err);
 						// 如果跳转失败，降级回原来的方式
 						this.navigateTo({
-							type: 'page', 
+							type: 'page',
 							url: '/pages/project/detail/self',
 							id: item._id
 						});
@@ -288,13 +437,13 @@
 		width: 100%;
 		padding: 30rpx;
 	}
-	
+
 	.empty-image {
 		width: 200rpx;
 		height: 200rpx;
 		margin-bottom: 30rpx;
 	}
-	
+
 	.empty-text {
 		font-size: 32rpx;
 		color: #999;
@@ -389,7 +538,7 @@
 		border-bottom: 2rpx solid #eee;
 		padding-right: 0rpx;
 	}
-	
+
 	.tag-style-0 {
 		padding-top: 6rpx;
 		border-bottom-left-radius: 12rpx;
@@ -406,7 +555,7 @@
 		margin-bottom: 10rpx;
 		padding-right: 12rpx;
 	}
-	
+
 	.tag-style-1 {
 		padding-top: 6rpx;
 		border-bottom-left-radius: 12rpx;
@@ -423,7 +572,7 @@
 		margin-bottom: 10rpx;
 		padding-right: 12rpx;
 	}
-	
+
 	.tag-style-2 {
 		padding-top: 6rpx;
 		border-bottom-left-radius: 12rpx;
@@ -440,7 +589,7 @@
 		margin-bottom: 10rpx;
 		padding-right: 12rpx;
 	}
-	
+
 	.text8-clz {
 		padding-top: 6rpx;
 		border-bottom-left-radius: 12rpx;
@@ -540,5 +689,18 @@
 	}
 	.flex-direction-column {
 		flex-direction: column;
+	}
+
+	.description-container {
+		flex: 1;
+		overflow: hidden;
+	}
+
+	.description-text {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-width: 400rpx;
+		color: #666;
 	}
 </style>

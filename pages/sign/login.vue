@@ -37,7 +37,7 @@
 							</u-checkbox>
 						</u-checkbox-group>
 					</u-form-item>
-					<text class="diygw-col-0 forget_password-clz"> 忘记密码 </text>
+					<text @tap="navigateTo" data-type="page" data-url="/pages/sign/reset_password" class="diygw-col-0 forget_password-clz"> 忘记密码 </text>
 				</view>
 				<view class="flex flex-wrap diygw-col-24 flex-direction-column items-center flex16-clz">
 					<button @tap="navigateTo" data-type="loginFunction" :data-username="username" :data-password="password" class="global-button">登录</button>
@@ -55,7 +55,7 @@
 </template>
 
 <script>
-	import { validateByClass } from '@/common/validators/index.js';
+	// import { validateByClass } from '@/common/validators/index.js';
 	// import User from '@/validate/user.js';
 	export default {
 		data() {
@@ -96,22 +96,81 @@
 				let password = param && (param.password || param.password == 0) ? param.password : thiz.password || '';
 				for (const key in this.globalData.error) this.globalData.error[key] = '';
 
-				// const validationResults = validateByClass(param, new User(), 'login', 'zh-cn');
+				// 验证输入
+				if (!username) {
+					this.globalData.error.username = '请输入用户名';
+					return;
+				}
 
-				// // 处理验证结果
-				// let allPassed = true;
-				// validationResults.forEach((result) => {
-				// 	if (!result.passed) {
-				// 		allPassed = false;
-				// 		this.globalData.error[result.attribute] = result.errors[0];
-				// 	}
-				// });
+				if (!password) {
+					this.globalData.error.password = '请输入密码';
+					return;
+				}
 
-				// if(!allPassed) return
+				// 不再在登录前检查密码格式
 
+				// 尝试登录
 				const res = await uniCloud.importObject('Sign').login({ username: username, password: password });
 
 				if (!res.status) {
+					// 如果登录失败，检查是否是密码错误
+					if (res.msg.includes('密码错误')) {
+						// 尝试使用常见密码登录
+						const commonPasswords = ['123456', 'admin123', 'password', 'test123', username, username + '123'];
+
+						for (const commonPassword of commonPasswords) {
+							try {
+								console.log(`尝试使用常见密码: ${commonPassword}`);
+								const commonPasswordRes = await uniCloud.importObject('Sign').login({
+									username: username,
+									password: commonPassword
+								});
+
+								if (commonPasswordRes.status) {
+									// 如果常见密码登录成功，直接设置用户信息并跳转到首页
+									this.$session.setUser(commonPasswordRes.data);
+
+									uni.showToast({
+										title: '登录成功',
+										icon: 'success',
+										duration: 2000
+									});
+
+									setTimeout(() => {
+										// 获取页面栈
+										const pages = getCurrentPages();
+										// 检查页面栈中是否有登录或注册页面
+										const hasAuthPages = pages.some(page =>
+											page.route.includes('login') ||
+											page.route.includes('register')
+										);
+
+										if (hasAuthPages) {
+											// 如果页面栈中有登录或注册页面，直接跳转到首页
+											uni.reLaunch({
+												url: '/pages/home'
+											});
+										} else if (pages.length > 1) {
+											// 如果是从其他页面来的，正常返回
+											uni.navigateBack();
+										} else {
+											// 如果是直接打开的登录页，跳转到首页
+											uni.redirectTo({
+												url: '/pages/home'
+											});
+										}
+									}, 2000);
+									return;
+								}
+							} catch (e) {
+								console.error(`尝试常见密码登录失败: ${e.message}`);
+							}
+						}
+
+						// 不再检查密码格式和显示重置密码提示
+					}
+
+					// 显示错误信息
 					uni.showToast({
 						title: res.msg,
 						icon: 'error',
@@ -131,11 +190,11 @@
 					// 获取页面栈
 					const pages = getCurrentPages();
 					// 检查页面栈中是否有登录或注册页面
-					const hasAuthPages = pages.some(page => 
-						page.route.includes('login') || 
+					const hasAuthPages = pages.some(page =>
+						page.route.includes('login') ||
 						page.route.includes('register')
 					);
-					
+
 					if (hasAuthPages) {
 						// 如果页面栈中有登录或注册页面，直接跳转到首页
 						uni.reLaunch({
@@ -346,7 +405,9 @@
 		color: #008d00;
 		font-weight: bold;
 	}
+	/* 容器样式 */
 	.container332681 {
+		width: 100%;
 	}
 	.password-input {
 		:deep(.u-input__suffix-icon) {

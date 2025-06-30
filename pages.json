@@ -8,9 +8,23 @@
 			}
 		},
 		{
+			"path": "pages/user/project",
+			"style": {
+				"navigationBarTitleText": "用户主页",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
 			"path": "pages/profile/main_page",
 			"style": {
 				"navigationBarTitleText": "个人主页",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/profile/profile_edit",
+			"style": {
+				"navigationBarTitleText": "编辑个人资料",
 				"navigationBarBackgroundColor": "#07c160"
 			}
 		},
@@ -177,6 +191,20 @@
 			"path": "pages/message/system_detail",
 			"style": {
 				"navigationBarTitleText": "系统消息详情",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/project/favorite",
+			"style": {
+				"navigationBarTitleText": "我的收藏",
+				"navigationBarBackgroundColor": "#07c160"
+			}
+		},
+		{
+			"path": "pages/user/select_project_to_invite",
+			"style": {
+				"navigationBarTitleText": "选择要邀请的项目",
 				"navigationBarBackgroundColor": "#07c160"
 			}
 		}

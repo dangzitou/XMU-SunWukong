@@ -1,0 +1,56 @@
+{
+    "bsonType": "object",
+    "required": [
+        "user_id",
+        "project_id"
+    ],
+    "permission": {
+        "read": true,
+        "create": true,
+        "update": true,
+        "delete": true
+    },
+    "properties": {
+        "_id": {
+            "description": "ID，系统自动生成"
+        },
+        "user_id": {
+            "bsonType": "string",
+            "title": "用户ID",
+            "description": "收藏项目的用户ID",
+            "foreignKey": "xm-stp-user._id"
+        },
+        "project_id": {
+            "bsonType": "string",
+            "title": "项目ID",
+            "description": "被收藏的项目ID",
+            "foreignKey": "xm-stp-project_detail._id"
+        },
+        "create_time": {
+            "bsonType": "timestamp",
+            "title": "创建时间",
+            "description": "收藏创建时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+        }
+    },
+    "indexes": [
+        {
+            "IndexName": "user_project_index",
+            "MgoKeySchema": {
+                "MgoIndexKeys": [
+                    {
+                        "Name": "user_id",
+                        "Direction": "1"
+                    },
+                    {
+                        "Name": "project_id",
+                        "Direction": "1"
+                    }
+                ],
+                "MgoIsUnique": true
+            }
+        }
+    ]
+}

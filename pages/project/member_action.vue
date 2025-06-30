@@ -1,6 +1,6 @@
 <template>
 	<view class="container container328924">
-		
+
 		<view class="flex flex-direction-column flex-sub diygw-col-24 main-content">
 			<view class="flex flex-direction-column flex-sub member-section">
 				<view @tap="changeCollapse1" data-index="0" class="diygw-text-md padding flex solid-bottom section-header" :class="[collapse1Datas[0].isShow ? 'text- cur ' : '']">
@@ -10,9 +10,8 @@
 				<view v-if="collapse1Datas[0].isShow" class="solid-bottom member-list">
 					<view v-for="(value, index) in getConfirm" :key="index" class="flex flex-wrap diygw-col-24 justify-between member-card">
 						<view class="flex flex-wrap diygw-col-0 flex-direction-column flex-clz member-info">
-							<text class="diygw-col-24 member-name"> 
-								{{ value.user.real_name }} （{{ value.project_position }}）
-								<text v-if="value.has_invite_permission" class="tag-invite">邀请者</text>
+							<text class="diygw-col-24 member-name">
+								{{ value.user.real_name }} （{{ value.has_invite_permission ? value.project_position + '、邀请者' : value.project_position }}）
 							</text>
 							<text v-if="value.project_position != '指导老师'" class="diygw-col-24 member-year"> {{ value.user.onboarding_year }}级 {{ value.user.type }} </text>
 							<text class="diygw-col-24 member-college"> {{ value.user.college_category_id }} - {{ value.user.specific_category_id }} </text>
@@ -104,7 +103,8 @@
 <p style="text-align: center;">身份: {{item.default.user.onboarding_year}}级别 {{item.default.user.type}}</p>
 <p style="text-align: center;">学院：{{item.default.user.college_category_id}}-{{item.default.user.specific_category_id}}</p>
 <p style="text-align: center;">从 <span style="color: #3598db;">还未选上</span> 设置成 <span style="color: #3598db;">内定成员</span></p>`,
-				modal: ''
+				modal: '',
+				projectTitle: ''
 			};
 		},
 		computed: {
@@ -118,7 +118,7 @@
 						return value.project_position !== 3; // 3是待定成员的数字编码
 					}
 					// 处理字符串类型
-					return value.project_position !== '待定成员'; 
+					return value.project_position !== '待定成员';
 				}).forEach((item) => list.set(item._id, { ...item, default: 'confirm' }));
 
 				for (const id in this.globalData.changedList) {
@@ -172,8 +172,7 @@
 			},
 			// 获取该项目的人员 自定义方法
 			async getMembersFunction(param) {
-				let thiz = this;
-				let option = param && (param.option || param.option == 0) ? param.option : thiz.globalOption || '';
+				let option = param && (param.option || param.option == 0) ? param.option : this.globalOption || '';
 				const res = await uniCloud.importObject('Project').getProjectMembers({ id: option.id, user_id: this.$session.getUserValue('user_id') });
 
 				if (!res.status) {
@@ -187,10 +186,11 @@
 							url: '/pages/in_project/self'
 						});
 					}, 2000);
+					return;
 				}
 
 				this.globalData.list = res.data;
-				
+
 				// 确保项目关系数据中的 project_position 是数字类型
 				// 数据库中的位置代码：0：指导老师，1：项目负责人，2：成员，3：待定成员
 				if (this.globalData.list.relation && this.globalData.list.relation.length > 0) {
@@ -216,6 +216,11 @@
 									this.globalData.list.relation[i]._position_code = 2;
 							}
 						}
+
+						// 确保 has_invite_permission 字段存在，如果不存在则默认为 false
+						if (this.globalData.list.relation[i].has_invite_permission === undefined) {
+							this.globalData.list.relation[i].has_invite_permission = false;
+						}
 					}
 				}
 
@@ -232,35 +237,66 @@
 				}
 
 				this.globalData.defaultList = { ...this.globalData.list };
-				
+
 				// 打印一下处理后的数据，用于调试
-				console.log('项目成员数据:', JSON.stringify(this.globalData.list.relation));
+				console.log('项目成员数据:', JSON.stringify(this.globalData.list));
+
+				// 特别检查邀请权限字段
+				for (const i in this.globalData.list.relation) {
+					const member = this.globalData.list.relation[i];
+					console.log(`成员 ${member.user_id} 的邀请权限状态:`, member.has_invite_permission);
+
+					// 强制转换为布尔值
+					if (member.has_invite_permission === 'true' || member.has_invite_permission === 1) {
+						member.has_invite_permission = true;
+						console.log(`将成员 ${member.user_id} 的邀请权限转换为 true`);
+					} else if (member.has_invite_permission === 'false' || member.has_invite_permission === 0) {
+						member.has_invite_permission = false;
+						console.log(`将成员 ${member.user_id} 的邀请权限转换为 false`);
+					} else if (member.has_invite_permission === undefined || member.has_invite_permission === null) {
+						member.has_invite_permission = false;
+						console.log(`成员 ${member.user_id} 的邀请权限为空，设置为 false`);
+					}
+				}
 			},
 
 			// 打开项目成员操作菜单（三点按钮点击事件）
 			openActionSheet(event) {
 				const member = event.currentTarget.dataset.member;
 				const items = [];
-				
-				// 根据成员的状态添加不同选项
-				if (member.has_invite_permission) {
+
+				// 打印成员信息以进行调试
+				console.log('当前点击的成员信息:', JSON.stringify(member));
+				console.log('成员的邀请权限状态:', member.has_invite_permission);
+				console.log('成员权限类型:', typeof member.has_invite_permission);
+
+				// 强制转换为布尔值
+				if (member.has_invite_permission === 'true' || member.has_invite_permission === 1 || member.has_invite_permission === true) {
+					member.has_invite_permission = true;
+					console.log('成员有邀请权限，显示移除邀请权限选项');
 					items.push('移除邀请权限');
 				} else {
+					member.has_invite_permission = false;
+					console.log('成员没有邀请权限，显示设置为邀请者选项');
 					items.push('设置为邀请者');
 				}
-				
+
 				items.push('移至待定区');
 				items.push('移除成员');
-				
+
+				console.log('显示的菜单项:', items);
 				uni.showActionSheet({
 					itemList: items,
 					success: (res) => {
 						const tapIndex = res.tapIndex;
+						console.log('用户点击了:', items[tapIndex]);
 						switch (items[tapIndex]) {
 							case '设置为邀请者':
+								console.log('执行设置为邀请者操作');
 								this.manageMemberAction(member, 'add_invite_permission');
 								break;
 							case '移除邀请权限':
+								console.log('执行移除邀请权限操作');
 								this.manageMemberAction(member, 'remove_invite_permission');
 								break;
 							case '移至待定区':
@@ -273,7 +309,7 @@
 					}
 				});
 			},
-			
+
 			// 打开待定成员操作菜单
 			openPendingActionSheet(event) {
 				const member = event.currentTarget.dataset.member;
@@ -291,12 +327,14 @@
 					}
 				});
 			},
-			
+
 			// 管理成员操作
 			async manageMemberAction(member, action) {
 				try {
-					console.log('管理成员操作:', action, member);
-					
+					console.log('管理成员操作:', action, JSON.stringify(member));
+					console.log('成员的邀请权限状态:', member.has_invite_permission);
+					console.log('成员权限类型:', typeof member.has_invite_permission);
+
 					// 确保有用户ID
 					if (!member || !member.user_id) {
 						console.error('成员数据缺失用户ID:', member);
@@ -307,46 +345,157 @@
 						});
 						return;
 					}
-					
+
 					// 显示加载中提示
 					uni.showLoading({
 						title: '处理中...',
 						mask: true
 					});
-					
+
+					// 如果是添加或移除邀请权限，先获取项目标题
+					this.projectTitle = '';
+					if (action === 'add_invite_permission' || action === 'remove_invite_permission') {
+						try {
+							const projectInfo = await uniCloud.importObject('Project').getDetail({
+								id: this.globalOption.id
+							});
+							if (projectInfo && projectInfo.data) {
+								this.projectTitle = projectInfo.data.title || '未知项目';
+							}
+						} catch (error) {
+							console.error('获取项目标题失败:', error);
+							this.projectTitle = '项目';
+						}
+					}
+
 					const res = await uniCloud.importObject('ProjectAction').manageMember({
 						project_id: this.globalOption.id,
 						user_id: member.user_id,
 						operator_id: this.$session.getUserValue('user_id'),
 						action: action
 					});
-					
+
 					console.log('操作结果:', res);
-					
+
 					// 隐藏加载提示
 					uni.hideLoading();
-					
+
 					// 即使后端出错但实际上操作可能已成功，所以始终刷新数据
 					if (res.status) {
+						// 根据操作类型显示不同的成功提示
+						let successMessage = res.msg;
+						if (action === 'add_invite_permission') {
+							successMessage = '设置成功';
+						} else if (action === 'remove_invite_permission') {
+							successMessage = '移除权限成功';
+						}
+
 						uni.showToast({
-							title: res.msg,
+							title: successMessage,
 							icon: 'success',
 							duration: 2000
 						});
-						
+
 						// 操作成功，立即刷新页面数据
+						console.log('开始刷新成员数据...');
 						await this.getMembersFunction();
+						console.log('成员数据刷新完成');
+
+						// 强制刷新视图
+						this.$forceUpdate();
+						console.log('强制刷新视图完成');
 					} else {
 						// 如果是通知相关错误，我们仍然认为操作成功，只是通知失败
 						if (res.msg && (res.msg.includes('sendProjectNotification') || res.msg.includes('通知'))) {
 							console.warn('操作可能已成功，但发送通知失败:', res.msg);
+
+							// 根据操作类型显示不同的成功提示
+							let successMessage = '操作已完成';
+							if (action === 'add_invite_permission') {
+								successMessage = '设置成功';
+
+								// 直接从前端发送通知
+								try {
+									console.log('尝试直接从前端发送获得邀请权限的通知');
+									console.log('项目标题:', this.projectTitle);
+									console.log('用户ID:', member.user_id);
+									console.log('项目ID:', this.globalOption.id);
+									// 先测试数据库连接
+									console.log('先测试数据库连接');
+									const testResult = await uniCloud.callFunction({
+										name: 'TestDbConnection'
+									});
+									console.log('测试数据库连接结果:', testResult);
+
+									// 发送通知
+									const notifyResult = await uniCloud.callFunction({
+										name: 'SendProjectNotification',
+										data: {
+											user_id: member.user_id,
+											project_id: this.globalOption.id,
+											title: '获得项目邀请权限',
+											content: `您在项目「${this.projectTitle}」中获得了邀请权限，现在可以邀请其他用户加入此项目。`,
+											type: 'invite_permission',
+											action_data: {
+												action: 'add_permission',
+												operator_id: this.$session.getUserValue('user_id')
+											}
+										}
+									});
+									console.log('直接发送通知结果:', notifyResult);
+								} catch (notifyError) {
+									console.error('直接发送通知失败:', notifyError);
+								}
+							} else if (action === 'remove_invite_permission') {
+								successMessage = '移除权限成功';
+
+								// 直接从前端发送通知
+								try {
+									console.log('尝试直接从前端发送移除邀请权限的通知');
+									console.log('项目标题:', this.projectTitle);
+									console.log('用户ID:', member.user_id);
+									console.log('项目ID:', this.globalOption.id);
+									// 先测试数据库连接
+									console.log('先测试数据库连接');
+									const testResult = await uniCloud.callFunction({
+										name: 'TestDbConnection'
+									});
+									console.log('测试数据库连接结果:', testResult);
+
+									// 发送通知
+									const notifyResult = await uniCloud.callFunction({
+										name: 'SendProjectNotification',
+										data: {
+											user_id: member.user_id,
+											project_id: this.globalOption.id,
+											title: '项目邀请权限移除',
+											content: `您在项目「${this.projectTitle}」中的邀请权限已被移除。`,
+											type: 'invite_permission',
+											action_data: {
+												action: 'remove_permission',
+												operator_id: this.$session.getUserValue('user_id')
+											}
+										}
+									});
+									console.log('直接发送通知结果:', notifyResult);
+								} catch (notifyError) {
+									console.error('直接发送通知失败:', notifyError);
+								}
+							}
+
 							uni.showToast({
-								title: '操作已完成',
+								title: successMessage,
 								icon: 'success',
 								duration: 2000
 							});
 							// 仍然刷新页面
+							console.log('开始刷新成员数据(通知失败但操作成功)...');
 							await this.getMembersFunction();
+							console.log('成员数据刷新完成');
+
+							// 强制刷新视图
+							this.$forceUpdate();
+							console.log('强制刷新视图完成');
 						} else {
 							// 其他真正的错误
 							uni.showToast({
@@ -359,17 +508,76 @@
 				} catch (error) {
 					uni.hideLoading();
 					console.error('成员管理操作失败:', error);
-					
+
 					// 捕获可能的通知错误并继续
 					if (error && error.message && error.message.includes('sendProjectNotification')) {
 						console.warn('操作可能已成功，但发送通知失败:', error.message);
+
+						// 根据操作类型显示不同的成功提示
+						let successMessage = '操作已完成';
+						if (action === 'add_invite_permission') {
+							successMessage = '设置成功';
+
+							// 直接从前端发送通知
+							try {
+								console.log('尝试直接从前端发送获得邀请权限的通知(异常处理)');
+								const notifyResult = await uniCloud.callFunction({
+									name: 'SendProjectNotification',
+									data: {
+										user_id: member.user_id,
+										project_id: this.globalOption.id,
+										title: '获得项目邀请权限',
+										content: `您在项目「${this.projectTitle}」中获得了邀请权限，现在可以邀请其他用户加入此项目。`,
+										type: 'invite_permission',
+										action_data: {
+											action: 'add_permission',
+											operator_id: this.$session.getUserValue('user_id')
+										}
+									}
+								});
+								console.log('直接发送通知结果(异常处理):', notifyResult);
+							} catch (notifyError) {
+								console.error('直接发送通知失败(异常处理):', notifyError);
+							}
+						} else if (action === 'remove_invite_permission') {
+							successMessage = '移除权限成功';
+
+							// 直接从前端发送通知
+							try {
+								console.log('尝试直接从前端发送移除邀请权限的通知(异常处理)');
+								const notifyResult = await uniCloud.callFunction({
+									name: 'SendProjectNotification',
+									data: {
+										user_id: member.user_id,
+										project_id: this.globalOption.id,
+										title: '项目邀请权限移除',
+										content: `您在项目「${this.projectTitle}」中的邀请权限已被移除。`,
+										type: 'invite_permission',
+										action_data: {
+											action: 'remove_permission',
+											operator_id: this.$session.getUserValue('user_id')
+										}
+									}
+								});
+								console.log('直接发送通知结果(异常处理):', notifyResult);
+							} catch (notifyError) {
+								console.error('直接发送通知失败(异常处理):', notifyError);
+							}
+						}
+
 						uni.showToast({
-							title: '操作已完成',
+							title: successMessage,
 							icon: 'success',
 							duration: 2000
 						});
 						// 尝试刷新页面
+						console.log('开始刷新成员数据(异常处理)...');
 						await this.getMembersFunction();
+						console.log('成员数据刷新完成');
+
+						// 强制刷新视图
+						this.$forceUpdate();
+						console.log('强制刷新视图完成');
 					} else {
 						uni.showToast({
 							title: '操作失败，请重试',
@@ -382,7 +590,6 @@
 
 			// 开启自我介绍 自定义方法
 			async openIntroductionFunction(param) {
-				let thiz = this;
 				let comment = param && (param.comment || param.comment == 0) ? param.comment : '';
 				this.globalData.introduction = comment;
 
@@ -394,11 +601,9 @@
 
 			// 改变成员状态 自定义方法
 			async changeStatusFunction(param) {
-				let thiz = this;
 				let data = param && (param.data || param.data == 0) ? param.data : '';
 				let from = param && (param.from || param.from == 0) ? param.from : '';
 				let to = param && (param.to || param.to == 0) ? param.to : '';
-				const userId = data.user_id;
 
 				this.globalData.changedList[data.user_id] = {
 					default: data,
@@ -431,8 +636,7 @@
 
 			// 更新队员 自定义方法
 			async updateMemberFunction(param) {
-				let thiz = this;
-				let option = param && (param.option || param.option == 0) ? param.option : thiz.globalOption || '';
+				let option = param && (param.option || param.option == 0) ? param.option : this.globalOption || '';
 				const data = [];
 				for (const user_id in this.globalData.changedList) {
 					data.push({
@@ -496,11 +700,11 @@
 		min-height: 100vh;
 		padding: 10rpx;
 	}
-	
+
 	.main-content {
 		padding: 0 5rpx;
 	}
-	
+
 	.member-section {
 		margin-bottom: 15rpx;
 		background-color: #fff;
@@ -508,22 +712,22 @@
 		box-shadow: 0 1rpx 6rpx rgba(0, 0, 0, 0.03);
 		overflow: hidden;
 	}
-	
+
 	.section-header {
 		background-color: #f8f9fb;
 		border-bottom: 1px solid #eaedf2;
 	}
-	
+
 	.section-title {
 		font-weight: bold;
 		font-size: 28rpx;
 		color: #2d3748;
 	}
-	
+
 	.member-list {
 		padding: 5rpx 0;
 	}
-	
+
 	.member-card {
 		margin: 10rpx;
 		padding: 15rpx 10rpx;
@@ -531,33 +735,33 @@
 		background-color: #ffffff;
 		box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.03);
 	}
-	
+
 	.pending-card {
 		background-color: #fffdf8;
 	}
-	
+
 	.member-info {
 		padding: 0 5rpx;
 	}
-	
+
 	.member-name {
 		font-size: 28rpx !important;
 		font-weight: bold;
 		color: #333;
 		margin-bottom: 8rpx;
 	}
-	
+
 	.member-year {
 		font-size: 24rpx !important;
 		color: #666;
 		margin-bottom: 4rpx;
 	}
-	
+
 	.member-college {
 		font-size: 24rpx !important;
 		color: #888;
 	}
-	
+
 	.tag-invite {
 		margin-left: 10rpx;
 		font-size: 20rpx;
@@ -567,7 +771,7 @@
 		border-radius: 6rpx;
 		font-weight: normal;
 	}
-	
+
 	.action-btn {
 		background-color: transparent !important;
 		color: #2d3748 !important;
@@ -580,7 +784,7 @@
 		border-radius: 0 !important;
 		padding: 0 !important;
 	}
-	
+
 	.submit-btn {
 		background-color: #07c160;
 		padding: 20rpx 15rpx;
@@ -592,35 +796,35 @@
 		box-shadow: 0 2rpx 5rpx rgba(7, 193, 96, 0.2);
 		border: none;
 	}
-	
+
 	.modal-container {
 		border-radius: 10rpx;
 		overflow: hidden;
 	}
-	
+
 	.modal-title {
 		font-size: 30rpx;
 		font-weight: bold;
 		color: #333;
 		padding: 8rpx 0;
 	}
-	
+
 	.modal-actions {
 		padding: 8rpx;
 	}
-	
+
 	.cancel-btn {
 		background-color: #f5f7fa !important;
 		color: #666 !important;
 		border: 1px solid #ddd !important;
 	}
-	
+
 	.confirm-btn {
 		background-color: #07c160 !important;
 		color: #fff !important;
 		border: none !important;
 	}
-	
+
 	.ucontent1-clz {
 		padding: 15rpx;
 		width: 100% !important;

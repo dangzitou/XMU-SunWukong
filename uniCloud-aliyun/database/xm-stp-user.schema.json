@@ -55,6 +55,11 @@
             "forceDefaultValue": {
                 "$env": "now"
             }
+        },
+        "token": {
+            "bsonType": "string",
+            "title": "用户令牌",
+            "description": "用于用户登录验证的令牌"
         }
     }
 }

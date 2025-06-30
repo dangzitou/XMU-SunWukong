@@ -52,7 +52,7 @@
 					</text>
 				</view>
 				<view class="flex flex-wrap diygw-col-24 flex-direction-column items-center flex16-clz">
-					<button class="global-button">注册</button>
+					<button @tap="registerFunction" class="global-button">注册</button>
 				</view>
 				<view class="flex flex-wrap diygw-col-24 justify-center flex4-clz">
 					<view class="flex flex-wrap diygw-col-0 justify-center items-center flex14-clz">
@@ -100,48 +100,69 @@
 		methods: {
 			async init() {},
 			// 注册 自定义方法
-			async registerFunction(param) {
-				let thiz = this;
-				let username = param && (param.username || param.username == 0) ? param.username : thiz.username || '';
-				let email = param && (param.email || param.email == 0) ? param.email : thiz.email || '';
-				let id = param && (param.id || param.id == 0) ? param.id : thiz.id || '';
-				let password = param && (param.password || param.password == 0) ? param.password : thiz.password || '';
-				for (const key in this.globalData.error) this.globalData.error[key] = '';
-				// 把报错先全部清空
+			async registerFunction() {
+				// 清空所有错误信息
 				for (const key in this.globalData.error) this.globalData.error[key] = '';
 
-				// const validationResults = validateByClass(param, new User(), 'register', 'zh-cn');
+				// 基本验证
+				if (!this.username) {
+					this.globalData.error.username = '用户名不能为空';
+					return;
+				}
 
-				// // 处理验证结果
-				// let allPassed = true;
-				// validationResults.forEach((result) => {
-				// 	if (!result.passed) {
-				// 		allPassed = false;
-				// 		console.log(result.attribute, this.globalData.error);
-				// 		this.globalData.error[result.attribute] = result.errors[0];
-				// 	}
-				// });
+				if (!this.password) {
+					this.globalData.error.password = '密码不能为空';
+					return;
+				}
 
-				// if (!allPassed) return;
+				if (this.password.length < 6) {
+					this.globalData.error.password = '密码长度不能少于6位';
+					return;
+				}
 
-				const res = await uniCloud.importObject('Sign').register({ username: username, password: password });
+				// 准备注册数据
+				const registerData = {
+					username: this.username,
+					password: this.password,
+					id: this.id,
+					email: this.email,
+					real_name: this.username, // 默认使用用户名作为真实姓名
+					school_id: parseInt(this.id) || 0 // 将学号转为数字
+				};
 
-				if (!res.status) {
+				try {
+					// 调用云函数进行注册
+					const res = await uniCloud.importObject('Sign').register(registerData);
+
+					if (!res.status) {
+						uni.showToast({
+							title: res.msg,
+							icon: 'error',
+							duration: 2000
+						});
+						return;
+					}
+
 					uni.showToast({
 						title: res.msg,
+						icon: 'success',
+						duration: 2000
+					});
+
+					// 注册成功后跳转到登录页面
+					setTimeout(() => {
+						uni.redirectTo({
+							url: '/pages/sign/login'
+						});
+					}, 1500);
+				} catch (e) {
+					console.error('注册出错:', e);
+					uni.showToast({
+						title: '注册失败，请稍后再试',
 						icon: 'error',
 						duration: 2000
 					});
-					return;
 				}
-				uni.showToast({
-					title: res.msg,
-					icon: 'success',
-					duration: 2000
-				});
-				uni.redirectTo({
-					url: '/pages/sign/login'
-				});
 			}
 		}
 	};

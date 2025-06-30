@@ -89,6 +89,21 @@
             "forceDefaultValue": {
                 "$env": "now"
             }
+        },
+        "images": {
+            "bsonType": "array",
+            "title": "项目图片",
+            "description": "项目相关图片",
+            "items": {
+                "bsonType": "string"
+            },
+            "defaultValue": []
+        },
+        "content_text": {
+            "bsonType": "string",
+            "title": "项目文字内容",
+            "description": "项目的文字描述内容",
+            "defaultValue": ""
         }
     }
 }

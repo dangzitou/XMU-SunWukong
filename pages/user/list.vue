@@ -5,9 +5,9 @@
 				<view class="diygw-search">
 					<view class="flex1 align-center flex padding-xs solid radius">
 						<text style="color: #555 !important" class="diy-icon-search"></text>
-						<input class="flex1" name="search" type="" v-model="search" placeholder="请输入关键字" />
+						<input class="flex1" name="search" type="" v-model="search" placeholder="请输入名字" />
 					</view>
-					<view style="color: #333 !important" class="diygw-tag margin-left-xs radius-xs"> 搜索 </view>
+					<view @tap="navigateTo" data-type="searchFunction" style="color: #333 !important" class="diygw-tag margin-left-xs radius-xs"> 搜索 </view>
 				</view>
 			</view>
 			<view class="flex flex-wrap diygw-col-24 flex-direction-column">
@@ -17,88 +17,58 @@
 					</view>
 					<view class="">
 						<view v-if="tabsIndex == 0" class="flex-sub">
-							<view class="flex flex-wrap diygw-col-24 items-center flex7-clz">
-								<image src="/static/3.png" class="image3-size diygw-image diygw-col-0 image3-clz" mode="widthFix"></image>
+							<view v-for="(item, index) in globalData.list[0]" :key="index" class="flex flex-wrap diygw-col-24 items-center flex7-clz" @tap="navigateTo" data-type="page" data-url="/pages/user/project" :data-user_id="item._id">
+								<image :src="item.avatar || '/static/profile/default.png'" class="image3-size diygw-image diygw-col-0 image3-clz" mode="widthFix"></image>
 								<view class="flex flex-wrap diygw-col-18 flex-direction-column justify-center items-start flex8-clz">
-									<text class="diygw-col-24 text4-clz"> 张三 </text>
+									<text class="diygw-col-24 text4-clz"> {{ item.real_name }} </text>
 									<view class="flex flex-wrap diygw-col-24 items-center flex9-clz">
 										<view class="flex diygw-col-24 flex-wrap tag-clz">
 											<view class="diygw-tag margin-xs xs radius diygw-line-green">
-												<text> 信息学院 </text>
+												<text> {{ item.college }} </text>
 											</view>
 											<view class="diygw-tag margin-xs xs radius diygw-line-green">
-												<text> 计算机科学与技术 </text>
+												<text> {{ item.specific || '未填写专业' }} </text>
 											</view>
 											<view class="diygw-tag margin-xs xs radius diygw-line-green">
-												<text> 2023级 </text>
+												<text> {{ item.onboarding_year }}级 </text>
 											</view>
 											<view class="diygw-tag margin-xs xs radius diygw-line-green">
-												<text> 本科生 </text>
+												<text> {{ item.type }} </text>
 											</view>
 										</view>
 									</view>
 									<view class="flex flex-wrap diygw-col-24 justify-between items-center flex17-clz">
 										<view class="flex flex-wrap diygw-col-0 items-center flex18-clz">
-											<text class="flex icon3 diygw-col-0 icon3-clz diy-icon-star"></text>
-											<text class="diygw-col-0 text8-clz"> 9999 </text>
-										</view>
-									</view>
-								</view>
-							</view>
-							<view class="flex flex-wrap diygw-col-24 items-center flex10-clz">
-								<image src="/static/3.png" class="image1-size diygw-image diygw-col-0 image1-clz" mode="widthFix"></image>
-								<view class="flex flex-wrap diygw-col-18 flex-direction-column justify-center items-start flex11-clz">
-									<text class="diygw-col-24 text2-clz"> 王五 </text>
-									<view class="flex flex-wrap diygw-col-24 items-center flex12-clz">
-										<view class="flex diygw-col-24 flex-wrap tag2-clz">
-											<view class="diygw-tag margin-xs xs radius diygw-line-green">
-												<text> 信息学院 </text>
-											</view>
-											<view class="diygw-tag margin-xs xs radius diygw-line-green">
-												<text> 计算机科学与技术 </text>
-											</view>
-											<view class="diygw-tag margin-xs xs radius diygw-line-green">
-												<text> 2023级 </text>
-											</view>
-											<view class="diygw-tag margin-xs xs radius diygw-line-green">
-												<text> 硕士研究生 </text>
-											</view>
-										</view>
-									</view>
-									<view class="flex flex-wrap diygw-col-24 justify-between items-center flex13-clz">
-										<view class="flex flex-wrap diygw-col-0 items-center flex14-clz">
-											<text class="flex icon1 diygw-col-0 icon1-clz diy-icon-star"></text>
-											<text class="diygw-col-0 text3-clz"> 9999 </text>
+											<text class="diygw-col-0 text8-clz"> 自身项目：{{ item.self_count ?? 0 }}, 加入项目：{{ item.request_count ?? 0 }} </text>
 										</view>
 									</view>
 								</view>
 							</view>
 						</view>
 						<view v-if="tabsIndex == 1" class="flex-sub">
-							<view class="flex flex-wrap diygw-col-24 items-center flex1-clz">
-								<image src="/static/3.png" class="image-size diygw-image diygw-col-0 image-clz" mode="widthFix"></image>
+							<view v-for="(item, index) in globalData.list[1]" :key="index" class="flex flex-wrap diygw-col-24 items-center flex1-clz" @tap="navigateTo" data-type="page" data-url="/pages/user/project" :data-user_id="item._id">
+								<image :src="item.avatar || '/static/profile/default.png'" class="image-size diygw-image diygw-col-0 image-clz" mode="widthFix"></image>
 								<view class="flex flex-wrap diygw-col-18 flex-direction-column justify-center items-start flex3-clz">
-									<text class="diygw-col-24 text-clz"> 李四 </text>
+									<text class="diygw-col-24 text-clz"> {{ item.real_name }} </text>
 									<view class="flex flex-wrap diygw-col-24 items-center flex4-clz">
 										<view class="flex diygw-col-24 flex-wrap tag1-clz">
 											<view class="diygw-tag margin-xs xs radius diygw-line-green">
-												<text> 信息学院 </text>
+												<text> {{ item.college }} </text>
 											</view>
 											<view class="diygw-tag margin-xs xs radius diygw-line-green">
-												<text> 计算机科学与技术 </text>
+												<text> {{ item.specific || '未填写专业' }} </text>
 											</view>
 											<view class="diygw-tag margin-xs xs radius diygw-line-green">
-												<text> 2023级 </text>
+												<text> {{ item.onboarding_year }}级 </text>
 											</view>
 											<view class="diygw-tag margin-xs xs radius diygw-line-green">
-												<text> 副教授 </text>
+												<text> {{ item.type }} </text>
 											</view>
 										</view>
 									</view>
 									<view class="flex flex-wrap diygw-col-24 justify-between items-center flex5-clz">
 										<view class="flex flex-wrap diygw-col-0 items-center flex6-clz">
-											<text class="flex icon diygw-col-0 icon-clz diy-icon-star"></text>
-											<text class="diygw-col-0 text1-clz"> 9999 </text>
+											<text class="diygw-col-0 text1-clz"> 自身项目：{{ item.self_count ?? 0 }}, 加入项目：{{ item.request_count ?? 0 }} </text>
 										</view>
 									</view>
 								</view>
@@ -121,7 +91,7 @@
 				//页面传参
 				globalOption: {},
 				//自定义全局变量
-				globalData: {},
+				globalData: { backup_list: [null, null], list: [null, null], backup_search: '' },
 				search: '',
 				tabsDatas: [
 					{ text: `学生`, icon: `` },
@@ -147,13 +117,62 @@
 			this.init();
 		},
 		methods: {
-			async init() {},
+			async init() {
+				await this.checkLoginFunction();
+				await this.defaultLoadFunction();
+			},
+			// 获取用户列表 自定义方法
+			async getListFunction() {
+				let thiz = this;
+				if (this.globalData.backup_list[thiz.tabsIndex] !== null) return;
+
+				const res = await uniCloud.importObject('User').getList({ type: ['学生', '导师'][thiz.tabsIndex], user_id: this.$session.getUserValue('user_id') });
+				this.globalData.list[thiz.tabsIndex] = res.data;
+				this.globalData.backup_list[thiz.tabsIndex] = res.data;
+			},
+
+			// 检查登录 自定义方法
+			async checkLoginFunction() {
+				if (!this.$session.getToken()) {
+					//比如未登录，转身到其他页面等
+					this.showToast('请先登录');
+
+					this.navigateTo({
+						type: 'page',
+						url: '/pages/sign/login'
+					});
+				}
+			},
+
+			// 默认获取 自定义方法
+			async defaultLoadFunction() {
+				this.getListFunction();
+			},
+
+			// 搜索用户 自定义方法
+			async searchFunction() {
+				let thiz = this;
+				if (this.globalData.backup_search != '' && this.globalData.backup_search == this.search) {
+					return;
+				}
+
+				if (this.search == '') {
+					this.globalData.list[thiz.tabsIndex] = this.globalData.backup_list[thiz.tabsIndex];
+					this.globalData.backup_search = '';
+					return;
+				}
+
+				const res = await uniCloud.importObject('User').getList({ type: ['学生', '导师'][thiz.tabsIndex], user_id: this.$session.getUserValue('user_id'), real_name: this.search });
+				this.globalData.list[thiz.tabsIndex] = res.data;
+				this.globalData.backup_search = this.search;
+			},
 			changeTabs(evt) {
 				let { index } = evt.currentTarget.dataset;
 				if (index == this.tabsIndex) return;
 				this.setData({
 					tabsIndex: index
 				});
+				this.navigateTo({ type: 'getListFunction' });
 			}
 		}
 	};
@@ -383,5 +402,6 @@
 		font-weight: bold;
 	}
 	.container332681 {
+		padding-bottom: 20rpx;
 	}
 </style>

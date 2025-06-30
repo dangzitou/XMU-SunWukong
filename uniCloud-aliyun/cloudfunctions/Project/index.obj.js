@@ -25,7 +25,7 @@ module.exports = {
 	},
 	async getListByCat(data) {
 		const cat = await db.collection('xm-stp-project_cat').where(`name=='${data.name}'`).get()
-		
+
 		if (cat.affectedDocs == 0) return {
 			status: 0,
 			msg: "不合格类别"
@@ -34,18 +34,18 @@ module.exports = {
 		const detail = await db.collection('xm-stp-project_detail').field('_id,title,person_needed,current_members,current_person_request')
 			.getTemp()
 
-		var condition = data.name == '竞赛项目' ? 
-			`type_id == '${cat.data[0]._id}' && status == 1 && competition_id != NULL` 
+		var condition = data.name == '竞赛项目' ?
+			`type_id == '${cat.data[0]._id}' && status == 1 && competition_id != NULL`
 			:
 			`type_id == '${cat.data[0]._id}' && status == 1`;
-		
+
 		//if(data.user_id != null) condition += ` && user_id != '${data.user_id}'`
-		
+
 		let res = await db.collection('xm-stp-project', detail)
 			.where(condition)
 			.field('_id,user_id,competition_id,create_time,ending_time')
 			.get()
-		
+
 		// 如果没有数据，直接返回空数组
 		if (!res.data || res.data.length === 0) {
 			return {
@@ -54,19 +54,19 @@ module.exports = {
 				data: []
 			}
 		}
-		
+
 		const projIds = []
 		let validProjects = [];
-		
+
 		// 第一次处理：仅保留有效的项目数据
 		for(const i in res.data){
 			// 确保_id和子元素存在且有效
-			if (res.data[i]._id && 
-				res.data[i]._id['xm-stp-project_detail'] && 
+			if (res.data[i]._id &&
+				res.data[i]._id['xm-stp-project_detail'] &&
 				res.data[i]._id['xm-stp-project_detail'].length > 0 &&
 				res.data[i]._id['xm-stp-project_detail'][0] &&
 				res.data[i]._id['xm-stp-project_detail'][0].title) { // 确保标题存在
-				
+
 				const project = {
 					title: res.data[i]._id['xm-stp-project_detail'][0].title,
 					person_needed: res.data[i]._id['xm-stp-project_detail'][0].person_needed || 0,
@@ -78,14 +78,14 @@ module.exports = {
 					create_time: res.data[i].create_time,
 					ending_time: res.data[i].ending_time
 				};
-				
+
 				validProjects.push(project);
 				projIds.push(project._id);
 			} else {
 				console.warn('跳过无效项目数据:', res.data[i]);
 			}
 		}
-		
+
 		// 如果没有有效项目，返回空数组
 		if (validProjects.length === 0) {
 			console.log('没有找到有效的项目数据');
@@ -95,7 +95,7 @@ module.exports = {
 				data: []
 			}
 		}
-		
+
 		// 继续处理有效项目数据
 		if(data.user_id && projIds.length > 0){
 			const inProj = await db.collection('xm-stp-project_app_request')
@@ -104,7 +104,7 @@ module.exports = {
 					user_id:data.user_id
 				})
 				.get()
-			
+
 			if(inProj.affectedDocs){
 				for(const i1 in validProjects){
 					for(const i2 in inProj.data){
@@ -116,7 +116,7 @@ module.exports = {
 				}
 			}
 		}
-		
+
 		// 处理竞赛项目信息
 		if(data.name == '竞赛项目'){
 			const compIds = []
@@ -125,7 +125,7 @@ module.exports = {
 					compIds.push(validProjects[i].competition_id)
 				}
 			}
-			
+
 			if (compIds.length > 0) {
 				const comp = await db.collection('xm-stp-project_comp_detail')
 				.where({
@@ -133,10 +133,10 @@ module.exports = {
 				})
 				.field('title')
 				.get()
-				
+
 				for(const i1 in validProjects){
 					if (!validProjects[i1].competition_id) continue;
-					
+
 					for(const i2 in comp.data){
 						if(validProjects[i1].competition_id == comp.data[i2]._id){
 							validProjects[i1].comp_name = comp.data[i2].title
@@ -146,7 +146,7 @@ module.exports = {
 				}
 			}
 		}
-		
+
 		// 如果current_members为空，获取成员数量
 		if (projIds.length > 0) {
 			const $ = db.command.aggregate
@@ -161,14 +161,14 @@ module.exports = {
 					count: $.sum(1)
 				})
 				.end()
-			
+
 			// 更新申请人数（仅限）
 			for(const project of validProjects) {
 				// 更新申请人数
 				const requestInfo = requestsCountList.data.find(r => r._id === project._id);
 				if(requestInfo) {
 					project.current_person_request = requestInfo.count;
-					
+
 					// 同步更新到项目详情表
 					try {
 						await db.collection('xm-stp-project_detail')
@@ -182,7 +182,7 @@ module.exports = {
 				}
 			}
 		}
-		
+
 		return {
 			status: 1,
 			msg: "OK",
@@ -197,7 +197,7 @@ module.exports = {
 		if(comp.affectedDocs) condition += ` && type_id != '${comp.data[0]._id}'`
 		// 如果有用户id就不拿他的
 		if(data.user_id) condition += ` && user_id != '${data.user_id}'`
-		
+
 		// 获取随机5个
 		const list = await db.collection('xm-stp-project').where(condition)
 			.field('type_id,create_time,ending_time').orderBy('create_time','desc').limit(5).get()
@@ -206,7 +206,7 @@ module.exports = {
 			msg:"OK",
 			data: []
 		}
-		
+
 		const projs = []
 		var cats = []
 		for(const i in list.data)
@@ -215,27 +215,29 @@ module.exports = {
 			cats.push(list.data[i].type_id)
 		}
 		cats = Array.from(new Set(cats))
-		
+
 		// 获取对应的项目详情
 		const detail = await db.collection('xm-stp-project_detail').where({
 			_id:dbCmd.in(projs)
-		}).field('title,person_needed').get()
-		
+		}).field('title,person_needed,current_members,current_person_request').get()
+
 		for(const i1 in list.data){
 			for(const i2 in detail.data){
 				if(list.data[i1]._id == detail.data[i2]._id){
 					list.data[i1].title = detail.data[i2].title
 					list.data[i1].person_needed = detail.data[i2].person_needed
+					list.data[i1].current_members = detail.data[i2].current_members || 0
+					list.data[i1].current_person_request = detail.data[i2].current_person_request || 0
 					break
 				}
 			}
 		}
-		
+
 		// 获取类别数据
 		const cat = await db.collection('xm-stp-project_cat').where({
 			_id:dbCmd.in(cats)
 		}).get()
-		
+
 		for(const i1 in list.data){
 			for(const i2 in cat.data){
 				if(list.data[i1].type_id == cat.data[i2]._id){
@@ -245,7 +247,43 @@ module.exports = {
 				}
 			}
 		}
-		
+
+		// 获取项目申请人数 - 确保数据准确性
+		if (projs.length > 0) {
+			const $ = db.command.aggregate
+			// 获取项目申请人数
+			const requestsCountList = await db.collection('xm-stp-project_app_request').aggregate()
+				.match({
+					project_id: db.command.in(projs),
+					status: 0 // 状态0表示待处理的申请
+				})
+				.group({
+					_id: '$project_id',
+					count: $.sum(1)
+				})
+				.end()
+
+			// 更新申请人数
+			for(const i in list.data) {
+				// 更新申请人数
+				const requestInfo = requestsCountList.data.find(r => r._id === list.data[i]._id);
+				if(requestInfo) {
+					list.data[i].current_person_request = requestInfo.count;
+
+					// 同步更新到项目详情表
+					try {
+						await db.collection('xm-stp-project_detail')
+							.doc(list.data[i]._id)
+							.update({
+								current_person_request: list.data[i].current_person_request
+							});
+					} catch (err) {
+						console.error(`更新项目 ${list.data[i]._id} 数据失败:`, err);
+					}
+				}
+			}
+		}
+
 		return {
 			status:1,
 			msg:"OK",
@@ -253,37 +291,176 @@ module.exports = {
 		}
 	},
 	async getDetailFromList(data){
-		const res = await db.collection('xm-stp-project_detail').doc(data.id).field('description,user_id').get()
+		const res = await db.collection('xm-stp-project_detail').doc(data.id).field('description,content_text,user_id').get()
 		if(res.affectedDocs == 0) return {
 			status:0,
 			msg: "不存在该项目"
 		}
-		
+
 		const $ = db.command.aggregate
 		const counter = await db.collection('xm-stp-project_app_request').aggregate()
 		    .match({
-		        project_id: data.id 
+		        project_id: data.id,
+		        status: 0 // 状态0表示待处理的申请
 		    })
 		    .group({
 		        _id: '$project_id', // 按 project_id 分组
 		        count: $.sum(1) // 统计每组的数量
 		    })
 		    .end();
-		
+
 		if(!counter.affectedDocs) res.data[0].person_pending = 0
 		else res.data[0].person_pending = counter.data[0].count
-		
+
+		// 同步更新到项目详情表，确保数据一致性
+		try {
+			await db.collection('xm-stp-project_detail')
+				.doc(data.id)
+				.update({
+					current_person_request: res.data[0].person_pending
+				});
+			console.log(`已同步更新项目 ${data.id} 的申请人数为 ${res.data[0].person_pending}`);
+		} catch (err) {
+			console.error(`更新项目 ${data.id} 数据失败:`, err);
+		}
+
 		return {
 			status:1,
 			msg:"OK",
 			data:res.data[0]
 		}
 	},
+	async getJoin(data) {
+		try {
+			// 获取用户加入的项目关系
+			const memberRelations = await db.collection('xm-stp-project_detail_user_rel')
+				.where({
+					user_id: data.user_id
+				})
+				.field("project_id,user_id,project_position,has_invite_permission")
+				.get();
+
+			if (!memberRelations.data.length) {
+				console.log('未找到项目成员关系');
+				return {
+					status: 1,
+					msg: "OK",
+					data: []
+				}
+			}
+
+			// 获取所有项目ID
+			const projectIds = memberRelations.data.map(rel => rel.project_id);
+
+			// 获取项目详情
+			const projectDetails = await db.collection('xm-stp-project_detail')
+				.where({
+					_id: dbCmd.in(projectIds),
+					user_id: dbCmd.neq(data.user_id) // 排除用户自己发起的项目
+				})
+				.field('_id,title,description,content_text,user_id,person_needed,current_members,current_person_request,create_time')
+				.get();
+
+			// 获取项目的ending_time字段（从 xm-stp-project 表中获取）
+			const filteredProjectIds = projectDetails.data.map(p => p._id);
+			const projectEndingTimes = await db.collection('xm-stp-project')
+				.where({
+					_id: dbCmd.in(filteredProjectIds)
+				})
+				.field('_id,ending_time')
+				.get();
+
+			// 将ending_time添加到projectDetails中
+			for (const project of projectDetails.data) {
+				const endingTimeInfo = projectEndingTimes.data.find(p => p._id === project._id);
+				if (endingTimeInfo && endingTimeInfo.ending_time) {
+					project.ending_time = endingTimeInfo.ending_time;
+					console.log(`项目 ${project._id} 的ending_time从 xm-stp-project 表中获取为: ${project.ending_time}`);
+				}
+			}
+
+			// 获取项目类型信息
+			// 只获取已经过滤后的项目的类型信息
+			const projectTypeInfo = await db.collection('xm-stp-project')
+				.where({
+					_id: dbCmd.in(filteredProjectIds)
+				})
+				.field('_id,type_id,competition_id')
+				.get();
+
+			// 获取项目类型名称
+			const typeIds = projectTypeInfo.data.map(p => p.type_id).filter(id => id);
+			let projectCats = [];
+			if (typeIds.length > 0) {
+				projectCats = await db.collection('xm-stp-project_cat')
+					.where({
+						_id: dbCmd.in(typeIds)
+					})
+					.field('_id,name')
+					.get();
+			}
+
+			// 合并项目详情和成员关系
+			const result = [];
+			for (const project of projectDetails.data) {
+				const relation = memberRelations.data.find(rel => rel.project_id === project._id);
+				if (relation) {
+					// 获取项目类型信息
+					const typeInfo = projectTypeInfo.data.find(t => t._id === project._id);
+					let projectCat = null;
+					if (typeInfo && typeInfo.type_id) {
+						projectCat = projectCats.data?.find(cat => cat._id === typeInfo.type_id);
+					}
+
+					// 获取创建者类型信息
+					let creatorType = null;
+					if (project.user_id) {
+						try {
+							const creatorInfo = await db.collection('xm-stp-user_detail')
+								.where({
+									_id: project.user_id
+								})
+								.field('_id,type')
+								.get();
+
+							if (creatorInfo.data && creatorInfo.data.length > 0) {
+								creatorType = creatorInfo.data[0].type === 'teacher' ? '导师发起' : '学生发起';
+							}
+						} catch (error) {
+							console.error('获取创建者类型失败:', error);
+						}
+					}
+
+					result.push({
+						...project,
+						project_position: relation.project_position,
+						has_invite_permission: relation.has_invite_permission,
+						project_cat: projectCat,
+						creator_type: creatorType,
+						type: typeInfo?.competition_id ? '竞赛组队' : '项目协作'
+					});
+				}
+			}
+
+			return {
+				status: 1,
+				msg: "OK",
+				data: result
+			};
+		} catch (error) {
+			console.error('获取用户加入的项目失败:', error);
+			return {
+				status: 0,
+				msg: "获取用户加入的项目失败: " + error.message
+			};
+		}
+	},
+
 	async getSelf(data) {
 		let check = await db.collection('xm-stp-project_detail')
 			.where(`user_id=='${data.user_id}'`)
 			.orderBy('create_time desc')
-			.field('_id, title, user_id, person_needed, college_categories, current_members, current_person_request, create_time')
+			.field('_id, title, description, content_text, user_id, person_needed, college_categories, current_members, current_person_request, create_time')
 			.get()
 
 		if (check.affectedDocs == 0) return {
@@ -315,20 +492,20 @@ module.exports = {
 						...detail[i1],
 						...project[i2]
 					})
-					if(list[index].competition_id) compIds.push(list[index].competition_id)					
+					if(list[index].competition_id) compIds.push(list[index].competition_id)
 					prjTypeList.push(list[index++].type_id)
 					break
 				}
 			}
 		}
-		
+
 		if(compIds.length){
 			const compList = await db.collection('xm-stp-project_comp_detail')
 			.where({
 				_id: dbCmd.in([...new Set(compIds)])
 			})
 			.field('title').get()
-			
+
 			for(const i1 in list){
 				for(const i2 in compList.data){
 					if(list[i1].competition_id == compList.data[i2]._id){
@@ -348,7 +525,7 @@ module.exports = {
 		for (const i in projectTypeDb.data) {
 			projectTypes[projectTypeDb.data[i]._id] = projectTypeDb.data[i].name
 		}
-		
+
 		const projIds = []
 		for (const i in list) {
 			projIds.push(list[i]._id)
@@ -356,28 +533,37 @@ module.exports = {
 			delete list[i].type_id
 			list[i].status = convertStatus(list[i].status)
 		}
-		
-		// 获取申请人数
-		const $ = db.command.aggregate
-		const counter = await db.collection('xm-stp-project_app_request').aggregate()
-		    .match({
-		        project_id: dbCmd.in(projIds) // 条件过滤：project_id 在指定列表中
-		    })
-		    .group({
-		        _id: '$project_id', // 按 project_id 分组
-		        count: $.sum(1) // 统计每组的数量
-		    })
-		    .end();
 
-		for(const i1 in counter.data){
-			for(const i2 in list){
-				if(list[i2]._id == counter.data[i1]._id){
-					list[i2].person_request = counter.data[i1].count
-					break
-				}
+		// 获取申请人数 - 使用与getDetailFromList相同的方法
+		const $ = db.command.aggregate
+		// 对每个项目单独获取申请人数
+		for (const proj of list) {
+			const counter = await db.collection('xm-stp-project_app_request').aggregate()
+				.match({
+					project_id: proj._id
+				})
+				.group({
+					_id: '$project_id', // 按 project_id 分组
+					count: $.sum(1) // 统计每组的数量
+				})
+				.end();
+
+			if (!counter.affectedDocs) {
+				proj.person_pending = 0;
+				proj.current_person_request = 0;
+			} else {
+				proj.person_pending = counter.data[0].count;
+				proj.current_person_request = counter.data[0].count;
 			}
+
+			// 同步更新到项目详情表
+			await db.collection('xm-stp-project_detail')
+				.doc(proj._id)
+				.update({
+					current_person_request: proj.current_person_request
+				});
 		}
-		
+
 		// 更新成员数量
 		for (const proj of list) {
 			// 获取当前成员数量 - 使用 xm-stp-project_detail_user_rel 表
@@ -387,27 +573,26 @@ module.exports = {
 					project_position: dbCmd.neq(1) // 排除项目负责人
 				})
 				.count();
-			
+
 			// 更新项目详情中的成员数
 			proj.current_members = memberCountRes.total || 0;
-			
+
 			// 同步更新到项目详情表，确保数据一致性
 			await db.collection('xm-stp-project_detail')
 				.doc(proj._id)
 				.update({
-					current_members: proj.current_members,
-					current_person_request: proj.person_request || 0
+					current_members: proj.current_members
 				});
-			
-			console.log(`已同步更新项目 ${proj._id} 的成员数为 ${proj.current_members}，申请人数为 ${proj.person_request || 0}`);
+
+			console.log(`已同步更新项目 ${proj._id} 的成员数为 ${proj.current_members}，申请人数为 ${proj.current_person_request}`);
 		}
-		
+
 		if(data.target_user) {
 			check = await db.collection('xm-stp-project_app_invite').where({
 				user_id: data.target_user,
 				project_id:dbCmd.in(projIds)
 			}).field('project_id').get()
-			
+
 			for(const i1 in check.data){
 				for(const i2 in list){
 					if(check.data[i1].project_id == list[i2]._id) {
@@ -416,12 +601,12 @@ module.exports = {
 					}
 				}
 			}
-			
+
 			check = await db.collection('xm-stp-project_app_request').where({
 				user_id: data.target_user,
 				project_id:dbCmd.in(projIds)
 			}).field('project_id').get()
-			
+
 			for(const i1 in check.data){
 				for(const i2 in list){
 					if(check.data[i1].project_id == list[i2]._id) {
@@ -431,7 +616,7 @@ module.exports = {
 				}
 			}
 		}
-		
+
 		return {
 			status: 1,
 			msg: "OK",
@@ -458,15 +643,15 @@ module.exports = {
 
 		project.data[0].type = project.data[0].type_id[0].name
 		delete project.data[0].type_id
-		
+
 		// 如果是隶属于竞赛
 		if(project.data[0].competition_id){
 			const comp = await db.collection('xm-stp-project_comp_detail')
 			.doc(project.data[0].competition_id).field('title').get()
-			
+
 			if(comp.affectedDocs) project.data[0].comp = comp.data[0].title
 		}
-		
+
 		// 获取项目允许学院信息
 		const academyNeeded = await db.collection('xm-stp-project_cat_relation, xm-stp-college_cat')
 			.where({
@@ -474,11 +659,11 @@ module.exports = {
 			})
 			.foreignKey("xm-stp-project_cat_relation.college_category_id")
 			.get()
-		
+
 		const academyList = []
 		for (const i in academyNeeded.data)
 			academyList.push(academyNeeded.data[i].college_category_id[0])
-		
+
 		// 获取项目中用户的信息
 		const userDetailTmp = await db.collection('xm-stp-user_detail').field('_id,real_name').getTemp()
 		const memberInProject = await db.collection('xm-stp-project_detail_user_rel', userDetailTmp)
@@ -490,14 +675,14 @@ module.exports = {
 			.get()
 
 		let haveUser = 0
-		
+
 		for (const i in memberInProject.data) {
-			if(data.user_id && data.user_id == memberInProject.data[i].user_id[0]) haveUser = 1 
+			if(data.user_id && data.user_id == memberInProject.data[i].user_id[0]) haveUser = 1
 			memberInProject.data[i].user = memberInProject.data[i].user_id[0]
 			memberInProject.data[i].project_position = convertPosition(memberInProject.data[i].project_position)
 			delete memberInProject.data[i].user_id
 		}
-		
+
 		// 先提前把数据整理
 		const result = {
 				...project.data[0],
@@ -516,7 +701,7 @@ module.exports = {
 				'user_id':data.user_id,
 				'project_id':data.id
 			}).field('_id').get()
-			
+
 			// 如果发现存在用户那么设置pending
 			if(checkExist.affectedDocs){
 				result.pending = 1
@@ -526,12 +711,12 @@ module.exports = {
 					'project_id':data.id,
 					'status': parseInt(getInviteStatus("等待回复"))
 				}).field('_id').get()
-				
+
 				if(checkExist.affectedDocs){
 					result.invite_pending = 1
 				}
 			}
-			
+
 		}
 
 		return {
@@ -568,14 +753,29 @@ module.exports = {
 
 		const projectId = res.id
 
-		await db.collection('xm-stp-project_detail').add({
+		// 准备项目详情数据
+		const projectDetailData = {
 			_id: projectId,
 			user_id: data.user_id,
 			title: data.title,
 			description: data.description,
 			person_needed: parseInt(data.person_needed),
 			user_type: data.user_type
-		})
+		};
+
+		// 如果有图片数组，添加到项目详情中
+		if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+			console.log(`添加项目图片数组: ${JSON.stringify(data.images)}`);
+			projectDetailData.images = data.images;
+		}
+
+		// 如果有内容文本，添加到项目详情中
+		if (data.content_text) {
+			projectDetailData.content_text = data.content_text;
+		}
+
+		// 添加项目详情
+		await db.collection('xm-stp-project_detail').add(projectDetailData)
 
 		await db.collection('xm-stp-project_detail_user_rel').add({
 			user_id: data.user_id,
@@ -702,57 +902,58 @@ module.exports = {
 			status:0,
 			msg:'不存在该项目'
 		}
-		
+
 		const list = {}
-		
+
 		list['invited'] = await db.collection('xm-stp-project_app_invite')
 		.where(`project_id == '${data.id}' && status == 1`).field('user_id').get()
-		
+
 		list['request'] = await db.collection('xm-stp-project_app_request').where({
 			'project_id':data.id,
 			'status':0
 		}).field('user_id,status,comment').get()
-		
+
+		// 获取项目成员关系，包括邀请权限字段
 		list['relation'] = await db.collection('xm-stp-project_detail_user_rel').where({
 			'project_id':data.id
-		}).field('user_id,project_position').get()
-		
+		}).field('user_id,project_position,has_invite_permission').get()
+
 		// console.log(check,invited,request,relation)
-		
+
 		for(const i in list['relation'].data)
 			list['relation'].data[i].project_position = convertPosition(list['relation'].data[i].project_position)
-		
-		
+
+
 		var user = [];
 		for(const key in list){
 			for(const i in list[key].data){
 				user.push(list[key].data[i].user_id)
 			}
 		}
-		
+
 		list['user'] = await db.collection('xm-stp-user_detail').where({
 			'_id':dbCmd.in(Array.from(new Set(user)))
 		}).get()
-		
+
 		for(const key in list){
 			list[key] = list[key].data
 		}
-		
+
 		cat_list = {'college':[],'specific':[]}
 		for(const i in list['user']){
 			list['user'][i].type = (await getType(list['user'][i].type)).name
 			cat_list['college'].push(list['user'][i].college_category_id)
 			cat_list['specific'].push(list['user'][i].specific_category_id)
 		}
-		
+
 		const college = await db.collection('xm-stp-college_cat').where({
 			'_id':dbCmd.in(Array.from(new Set(cat_list['college'])))
 		}).get()
-		
+
 		const specific = await db.collection('xm-stp-specific_cat').where({
 			'_id':dbCmd.in(Array.from(new Set(cat_list['specific'])))
 		}).get()
-		
+
 		for(const i in list['user']){
 			for(const j in college.data){
 				if(list['user'][i].college_category_id == college.data[j]._id){
@@ -760,7 +961,7 @@ module.exports = {
 					break;
 				}
 			}
-			
+
 			for(const j in specific.data){
 				if(list['user'][i].specific_category_id == specific.data[j]._id){
 					list['user'][i].specific_category_id = specific.data[j].name
@@ -768,26 +969,56 @@ module.exports = {
 				}
 			}
 		}
-				
+
+		// 打印调试信息，检查成员的邀请权限状态
+		console.log('项目成员关系数据:', JSON.stringify(list.relation));
+
+		// 确保所有成员都有 has_invite_permission 字段
+		for (const i in list.relation) {
+			if (list.relation[i].has_invite_permission === undefined) {
+				list.relation[i].has_invite_permission = false;
+				console.log(`为成员 ${list.relation[i].user_id} 设置默认邀请权限状态: false`);
+			} else {
+				console.log(`成员 ${list.relation[i].user_id} 的邀请权限状态: ${list.relation[i].has_invite_permission}`);
+			}
+		}
+
 		return {
 			status:1,
 			msg:"OK",
 			data:list
 		}
-		
+
 	},
-	// 获取所有项目
-	async getAllProjects() {
+	// 分页获取项目
+	async getProjectsByPage(data) {
 		try {
-			// 获取所有有效的项目
-			const condition = 'status == 1'
-			
+			// 参数验证
+			const page = parseInt(data.page) || 1;
+			const pageSize = parseInt(data.pageSize) || 10;
+			const skip = (page - 1) * pageSize;
+
+			// 构建查询条件
+			let condition = 'status == 1';
+
+			// 如果有筛选条件
+			if (data.filter) {
+				// 获取项目类型ID
+				const cat = await db.collection('xm-stp-project_cat').where(`name=='${data.filter}'`).get();
+				if (cat.affectedDocs > 0) {
+					condition += ` && type_id == '${cat.data[0]._id}'`;
+				}
+			}
+
+			// 查询项目基本信息
 			let res = await db.collection('xm-stp-project')
 				.where(condition)
 				.field('_id,user_id,competition_id,type_id,create_time,ending_time')
 				.orderBy('create_time', 'desc')
-				.get()
-			
+				.skip(skip)
+				.limit(pageSize)
+				.get();
+
 			if (res.affectedDocs === 0) {
 				return {
 					status: 1,
@@ -795,13 +1026,100 @@ module.exports = {
 					data: []
 				}
 			}
-			
+
+			// 收集项目ID、类别ID和创建者ID
+			const projIds = [];
+			const catIds = [];
+			const userIds = [];
+
+			for (const item of res.data) {
+				projIds.push(item._id);
+				if (item.type_id) catIds.push(item.type_id);
+				if (item.user_id) userIds.push(item.user_id);
+			}
+
+			// 获取项目详情
+			const details = await db.collection('xm-stp-project_detail')
+				.where({
+					_id: dbCmd.in(projIds)
+				})
+				.field('_id,title,description,content_text,person_needed,current_members,current_person_request')
+				.get();
+
+			// 获取项目类别
+			const cats = await db.collection('xm-stp-project_cat')
+				.where({
+					_id: dbCmd.in([...new Set(catIds)])
+				})
+				.field('_id,name')
+				.get();
+
+			// 合并数据
+			const result = [];
+			for (const project of res.data) {
+				const detail = details.data.find(d => d._id === project._id);
+				if (!detail) continue;
+
+				const cat = cats.data.find(c => c._id === project.type_id);
+
+				const projectData = {
+					_id: project._id,
+					title: detail.title,
+					description: detail.description,
+					content_text: detail.content_text,
+					person_needed: detail.person_needed,
+					current_members: detail.current_members || 0,
+					current_person_request: detail.current_person_request || 0,
+					user_id: project.user_id,
+					create_time: project.create_time,
+					ending_time: project.ending_time,
+					project_cat: cat ? { id: cat._id, name: cat.name } : null
+				};
+
+				result.push(projectData);
+			}
+
+			return {
+				status: 1,
+				msg: "OK",
+				data: result
+			}
+		} catch (error) {
+			console.error('分页获取项目失败:', error);
+			return {
+				status: 0,
+				msg: "获取项目失败: " + error.message,
+				data: []
+			}
+		}
+	},
+
+	// 获取所有项目
+	async getAllProjects() {
+		try {
+			// 获取所有有效的项目
+			const condition = 'status == 1'
+
+			let res = await db.collection('xm-stp-project')
+				.where(condition)
+				.field('_id,user_id,competition_id,type_id,create_time,ending_time')
+				.orderBy('create_time', 'desc')
+				.get()
+
+			if (res.affectedDocs === 0) {
+				return {
+					status: 1,
+					msg: "OK",
+					data: []
+				}
+			}
+
 			// 收集所有项目ID和类别ID
 			const projIds = []
 			const catIds = []
 			const compIds = []
 			const userIds = [] // 收集所有创建者ID
-			
+
 			for (const item of res.data) {
 				projIds.push(item._id)
 				if (item.type_id) catIds.push(item.type_id)
@@ -812,15 +1130,15 @@ module.exports = {
 					userIds.push(item.user_id) // 收集项目创建者ID
 				}
 			}
-			
+
 			// 获取项目详情
 			const details = await db.collection('xm-stp-project_detail')
 				.where({
 					_id: dbCmd.in(projIds)
 				})
-				.field('_id,title,person_needed,major,skills,student_type,current_members,current_person_request')
+				.field('_id,title,description,content_text,person_needed,major,skills,student_type,current_members,current_person_request')
 				.get()
-				
+
 			// 获取项目申请人数 - 仍然需要计算申请人数
 			const dbAgg = db.command.aggregate
 			const requestsCount = await db.collection('xm-stp-project_app_request')
@@ -834,7 +1152,7 @@ module.exports = {
 					count: dbAgg.sum(1)
 				})
 				.end()
-			
+
 			// 获取项目类别
 			let cats = {data: []};
 			if(catIds.length > 0) {
@@ -845,7 +1163,7 @@ module.exports = {
 					.field('_id,name')
 					.get()
 			}
-			
+
 			// 获取竞赛信息（如果有）
 			let comps = []
 			if (compIds.length > 0) {
@@ -855,10 +1173,10 @@ module.exports = {
 					})
 					.field('_id,title')
 					.get()
-				
+
 				comps = comps.data
 			}
-			
+
 			// 获取项目创建者信息
 			let creators = []
 			if (userIds.length > 0) {
@@ -868,13 +1186,13 @@ module.exports = {
 					})
 					.field('_id,real_name,username,avatar')
 					.get()
-				
+
 				creators = creators.data
 			}
-			
+
 			// 整合数据，严格验证每个项目的数据完整性
 			const result = []
-			
+
 			for (const project of res.data) {
 				// 添加项目详情 - 必须要有详情和标题才是有效项目
 				const detail = details.data.find(d => d._id === project._id);
@@ -882,8 +1200,8 @@ module.exports = {
 					console.warn('跳过无效项目(缺少标题):', project._id);
 					continue; // 跳过没有详情或标题的项目
 				}
-				
-				const projectData = { 
+
+				const projectData = {
 					...project,
 					...detail,
 					current_members: detail.current_members || 0,
@@ -894,7 +1212,7 @@ module.exports = {
 				const requestInfo = requestsCount.data.find(r => r._id === project._id);
 				if (requestInfo) {
 					projectData.current_person_request = requestInfo.count;
-					
+
 					// 同步更新到项目详情表，仅更新申请人数
 					try {
 						await db.collection('xm-stp-project_detail')
@@ -906,7 +1224,7 @@ module.exports = {
 						console.error(`更新项目 ${project._id} 数据失败:`, err);
 					}
 				}
-				
+
 				// 添加项目类别
 				if (project.type_id) {
 					const category = cats.data.find(c => c._id === project.type_id);
@@ -917,7 +1235,7 @@ module.exports = {
 						};
 					}
 				}
-				
+
 				// 添加竞赛信息
 				if (project.competition_id) {
 					const comp = comps.find(c => c._id === project.competition_id);
@@ -925,7 +1243,7 @@ module.exports = {
 						projectData.comp_name = comp.title;
 					}
 				}
-				
+
 				// 添加创建者信息
 				if (project.user_id) {
 					const creator = creators.find(c => c._id === project.user_id);
@@ -934,10 +1252,10 @@ module.exports = {
 						projectData.creator_avatar = creator.avatar;
 					}
 				}
-				
+
 				result.push(projectData);
 			}
-			
+
 			return {
 				status: 1,
 				msg: "OK",
@@ -955,42 +1273,42 @@ module.exports = {
 	async getProjectById(data) {
 		try {
 			console.log('获取项目信息，项目ID:', data.id);
-			
+
 			if (!data.id) {
 				return {
 					status: 0,
 					msg: "项目ID不能为空"
 				};
 			}
-			
+
 			// 获取项目基本信息
 			const projectRes = await db.collection('xm-stp-project')
 				.where(`_id == '${data.id}'`)
 				.get();
-				
+
 			if (projectRes.affectedDocs === 0) {
 				return {
 					status: 0,
 					msg: "项目不存在"
 				};
 			}
-			
+
 			const project = projectRes.data[0];
 			console.log('项目基本信息:', project);
-			
+
 			// 获取项目详情
 			const detailRes = await db.collection('xm-stp-project_detail')
 				.where(`_id == '${data.id}'`)
 				.field('title,description,person_needed,current_members,current_person_request,user_id')
 				.get();
-				
+
 			if (detailRes.affectedDocs > 0) {
 				Object.assign(project, detailRes.data[0]);
 			}
-			
+
 			// 获取当前报名人数 - 使用已有的 xm-stp-project_app_request 表
 			const $ = db.command.aggregate;
-			
+
 			// 获取当前申请人数
 			const requestCountRes = await db.collection('xm-stp-project_app_request')
 				.where({
@@ -998,53 +1316,53 @@ module.exports = {
 					status: 0 // 状态0表示待处理的申请
 				})
 				.count();
-				
+
 			// 更新项目详情中的申请人数
 			project.current_person_request = requestCountRes.total || 0;
-			
+
 			// 同步更新到项目详情表，确保数据一致性
 			await db.collection('xm-stp-project_detail')
 				.doc(data.id)
 				.update({
 					current_person_request: project.current_person_request
 				});
-				
+
 			console.log(`已同步更新项目 ${data.id} 的申请人数为 ${project.current_person_request}`);
-			
+
 			// 获取项目分类信息
 			if (project.type_id) {
 				const catRes = await db.collection('xm-stp-project_cat')
 					.where(`_id == '${project.type_id}'`)
 					.get();
-					
+
 				if (catRes.affectedDocs > 0) {
 					project.project_cat = catRes.data[0];
 				}
 			}
-			
+
 			// 获取竞赛信息
 			if (project.competition_id) {
 				const compRes = await db.collection('xm-stp-project_comp_detail')
 					.where(`_id == '${project.competition_id}'`)
 					.get();
-					
+
 				if (compRes.affectedDocs > 0) {
 					project.comp_name = compRes.data[0].title;
 				}
 			}
-			
+
 			// 获取创建者信息 - 从正确的表获取用户信息
 			if (project.user_id) {
 				console.log('获取创建者信息，用户ID:', project.user_id);
-				
+
 				// 从xm-stp-user_detail表获取用户信息，而不是uni-id-users表
 				const userRes = await db.collection('xm-stp-user_detail')
 					.where(`_id == '${project.user_id}'`)
 					.field('_id,username,real_name,avatar,introduction')
 					.get();
-					
+
 				console.log('创建者查询结果:', userRes);
-					
+
 				if (userRes.affectedDocs > 0) {
 					// 设置创建者名称 - 优先使用real_name, 然后是username
 					project.creator_name = userRes.data[0].real_name || userRes.data[0].username || '未知用户';
@@ -1059,20 +1377,20 @@ module.exports = {
 				console.log('项目无用户ID信息');
 				project.creator_name = '未知用户';
 			}
-			
+
 			// 获取项目成员信息 - 使用 xm-stp-project_detail_user_rel 表
 			const memberRes = await db.collection('xm-stp-project_detail_user_rel')
 				.where(`project_id == '${data.id}'`)
 				.get();
-				
+
 			if (memberRes.affectedDocs > 0) {
 				project.members = memberRes.data;
 			} else {
 				project.members = [];
 			}
-			
+
 			console.log('最终返回的项目信息:', project);
-			
+
 			return {
 				status: 1,
 				msg: "获取项目信息成功",
@@ -1090,22 +1408,22 @@ module.exports = {
 	async getProjectCreator(data) {
 		try {
 			console.log('获取项目创建者信息，项目ID:', data.project_id);
-			
+
 			if (!data.project_id) {
 				return {
 					status: 0,
 					msg: "项目ID不能为空"
 				};
 			}
-			
+
 			// 获取项目信息以找到创建者ID
 			const projectRes = await db.collection('xm-stp-project')
 				.where(`_id == '${data.project_id}'`)
 				.field('user_id')
 				.get();
-				
+
 			console.log('项目查询结果:', projectRes);
-				
+
 			if (projectRes.affectedDocs === 0 || !projectRes.data[0].user_id) {
 				console.log('找不到项目或创建者ID');
 				return {
@@ -1113,18 +1431,18 @@ module.exports = {
 					msg: "找不到项目或创建者信息"
 				};
 			}
-			
+
 			const userId = projectRes.data[0].user_id;
 			console.log('创建者ID:', userId);
-			
+
 			// 获取用户信息 - 从xm-stp-user_detail表获取
 			const userRes = await db.collection('xm-stp-user_detail')
 				.where(`_id == '${userId}'`)
 				.field('_id,username,real_name,avatar,introduction')
 				.get();
-				
+
 			console.log('用户查询结果:', userRes);
-				
+
 			if (userRes.affectedDocs === 0) {
 				console.log('找不到用户信息');
 				return {
@@ -1133,7 +1451,7 @@ module.exports = {
 					data: null
 				};
 			}
-			
+
 			// 返回格式调整，匹配ui-id-users表的字段名，保证前端代码兼容
 			const userData = {
 				_id: userRes.data[0]._id,
@@ -1142,9 +1460,9 @@ module.exports = {
 				avatar: userRes.data[0].avatar,
 				introduction: userRes.data[0].introduction
 			};
-			
+
 			console.log('用户信息:', userData);
-			
+
 			return {
 				status: 1,
 				msg: "获取创建者信息成功",
@@ -1167,17 +1485,17 @@ module.exports = {
 			const projectsResult = await db.collection('xm-stp-project_detail')
 				.field('_id,current_members,user_id')
 				.get();
-			
+
 			if (!projectsResult.data || projectsResult.data.length === 0) {
 				return {
 					status: 0,
 					msg: "未找到项目数据"
 				};
 			}
-			
+
 			const projects = projectsResult.data;
 			console.log(`找到 ${projects.length} 个项目需要处理`);
-			
+
 			let updatedCount = 0;
 			for (const project of projects) {
 				// 查询每个项目的成员数量，排除项目负责人(创建者)
@@ -1187,9 +1505,9 @@ module.exports = {
 						user_id: dbCmd.neq(project.user_id) // 排除项目创建者
 					})
 					.count();
-				
+
 				const memberCount = membersResult.total;
-				
+
 				// 只有当当前成员数与实际不符时才更新
 				if (project.current_members !== memberCount) {
 					await db.collection('xm-stp-project_detail')
@@ -1197,14 +1515,14 @@ module.exports = {
 						.update({
 							current_members: memberCount
 						});
-					
+
 					updatedCount++;
 					console.log(`已更新项目 ${project._id}: 当前成员从 ${project.current_members} 更新为 ${memberCount}`);
 				}
 			}
-			
+
 			console.log(`共修复 ${updatedCount} 个项目的成员数量`);
-			
+
 			return {
 				status: 1,
 				msg: `成功修复 ${updatedCount} 个项目的成员数量`,
