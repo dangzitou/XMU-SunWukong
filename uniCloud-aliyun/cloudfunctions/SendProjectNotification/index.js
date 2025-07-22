@@ -26,7 +26,7 @@ exports.main = async (event, context) => {
 			type: event.type,
 			status: 0, // 0表示未读
 			action_data: event.action_data || {},
-			create_time: new Date()
+			create_time: Math.floor(Date.now() / 1000) // 使用秒级时间戳
 		};
 
 		console.log('准备添加通知:', notification);

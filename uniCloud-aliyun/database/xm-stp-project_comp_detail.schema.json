@@ -43,6 +43,13 @@
 			"title": "详情",
 			"description": "项目详情"
 		},
+		"avatar": {
+			"bsonType": "file",
+			"title": "封面大图",
+			"description": "竞赛项目封面图片",
+			"label": "封面大图",
+			"order": 5
+		},
 		"current_team_request_pending": {
 			"bsonType": "int",
 			"title": "现有团队正寻找队伍",

@@ -144,6 +144,7 @@ module.exports = {
 			user_id: data.user_id,
 			project_id: projectId,
 			project_position: parseInt(convertPosition("项目负责人"))
+			// join_time 字段会由数据库schema自动设置为当前时间
 		})
 
 		const catList = []

@@ -16,7 +16,8 @@
 			@tap="navigateToProjectDetail(item)">
 			<view class="flex flex-wrap diygw-col-24 flex-direction-column flex7-clz">
 				<view class="flex flex-wrap diygw-col-24 items-stretch">
-					<view class="flex flex-wrap diygw-col-0 flex-direction-column justify-between flex6-clz">
+					<view class="flex flex-wrap flex-direction-column justify-between"
+						:class="hasProjectImage(item) ? 'diygw-col-0 flex6-clz' : 'diygw-col-24'">
 						<view class="flex flex-wrap diygw-col-0 items-center">
 							<text class="diygw-col-0 text3-clz">{{ item.title || '未知项目' }}</text>
 						</view>
@@ -27,7 +28,8 @@
 							<text class="diygw-col-0 text6-clz">{{ item.project_cat?.name || item.type || '科技创新' }}</text>
 						</view>
 					</view>
-					<image :src="getProjectImage(item)" class="image2-size diygw-image diygw-col-0 image2-clz" mode="widthFix"></image>
+					<!-- 只有当项目有图片时才显示图片 -->
+					<image v-if="hasProjectImage(item)" :src="getProjectImage(item)" class="image2-size diygw-image diygw-col-0 image2-clz" mode="widthFix"></image>
 				</view>
 				<view class="flex flex-wrap diygw-col-24 justify-between items-center flex12-clz">
 					<view class="flex flex-wrap diygw-col-0 items-center description-container">
@@ -278,7 +280,7 @@
 							if (!projectId) return { projectId, success: false };
 
 							try {
-								const result = await uniCloud.importObject('ProjectAction').getProjectImages({
+								const result = await uniCloud.importObject('ProjectAsset').getProjectImages({
 									project_id: projectId
 								});
 
@@ -319,7 +321,7 @@
 							if (!projectId) return { projectId, success: false };
 
 							try {
-								const result = await uniCloud.importObject('ProjectAction').getProjectCreator({
+								const result = await uniCloud.importObject('ProjectAsset').getProjectCreator({
 									project_id: projectId
 								});
 
@@ -355,6 +357,26 @@
 				} catch (error) {
 					console.error('批量加载创建者头像失败:', error);
 				}
+			},
+
+			// 判断项目是否有实际图片（非分类图标）
+			hasProjectImage(item) {
+				if (!item) return false;
+
+				// 检查项目的图片数组
+				if (item.images && item.images.length > 0) {
+					return true;
+				}
+
+				const projectId = item._id || item.project_id;
+
+				// 检查缓存的项目图片
+				if (projectId && this.projectImages[projectId]) {
+					return true;
+				}
+
+				// 没有实际项目图片
+				return false;
 			},
 
 			// 修改: 获取项目图片的方法，优先使用项目图片

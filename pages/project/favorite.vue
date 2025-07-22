@@ -10,7 +10,8 @@
 			class="flex flex-wrap diygw-col-24 flex-direction-column flex7-clz"
 			@tap="navigateToProjectDetail(item)">
 			<view class="flex flex-wrap diygw-col-24 items-stretch">
-				<view class="flex flex-wrap diygw-col-0 flex-direction-column justify-between flex6-clz">
+				<view class="flex flex-wrap flex-direction-column justify-between"
+					:class="hasProjectImage(item) ? 'diygw-col-0 flex6-clz' : 'diygw-col-24'">
 					<view class="flex flex-wrap diygw-col-0 items-center">
 						<text class="diygw-col-0 text3-clz">{{ item.title }}</text>
 					</view>
@@ -21,7 +22,8 @@
 						<text class="diygw-col-0 text6-clz">{{ item.project_cat?.name || '科技创新' }}</text>
 					</view>
 				</view>
-				<image :src="getProjectImage(item)" class="image2-size diygw-image diygw-col-0 image2-clz" mode="widthFix"></image>
+				<!-- 只有当项目有图片时才显示图片 -->
+				<image v-if="hasProjectImage(item)" :src="getProjectImage(item)" class="image2-size diygw-image diygw-col-0 image2-clz" mode="widthFix"></image>
 			</view>
 			<view class="flex flex-wrap diygw-col-24 justify-between items-center flex12-clz">
 				<view class="flex flex-wrap diygw-col-0 items-center description-container">
@@ -128,9 +130,9 @@
 						return;
 					}
 
-					// 使用ProjectAction.getFavoriteProjects云函数获取收藏项目
+					// 使用ProjectAsset.getFavoriteProjects云函数获取收藏项目
 					console.log('调用getFavoriteProjects云函数，用户ID:', userId);
-					const res = await uniCloud.importObject('ProjectAction').getFavoriteProjects({
+					const res = await uniCloud.importObject('ProjectAsset').getFavoriteProjects({
 						user_id: userId
 					});
 
@@ -297,6 +299,24 @@
 				var date = this.$tools.formatDateTime(ending_time, 'YYYY-mm-dd HH:MM');
 				date += this.$tools.formatDateTime(ending_time, 'YYYY-mm-dd HH:MM') < this.$tools.getCurrentDateTime() ? '(已过期)' : '';
 				return date;
+			},
+
+			// 判断项目是否有实际图片（非分类图标）
+			hasProjectImage(item) {
+				if (!item) return false;
+
+				// 检查项目的图片数组
+				if (item.images && item.images.length > 0) {
+					return true;
+				}
+
+				// 检查缓存的项目图片
+				if (item._id && this.projectImages[item._id]) {
+					return true;
+				}
+
+				// 没有实际项目图片
+				return false;
 			},
 
 			// 获取项目图片的方法，优先使用项目图片

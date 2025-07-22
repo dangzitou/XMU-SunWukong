@@ -50,6 +50,10 @@
 					<text class="meta-label">申请人数：</text>
 					<text class="meta-value">{{ projectDetail.current_person_request || 0 }}人</text>
 				</view>
+				<view class="meta-item">
+					<text class="meta-label">浏览量：</text>
+					<text class="meta-value">{{ getViewCount() }}次</text>
+				</view>
 			</view>
 		</view>
 
@@ -57,11 +61,9 @@
 		<view class="section creator-section" v-if="shouldShowCreatorSection()">
 			<view class="section-title">发起人信息</view>
 			<view class="creator-info">
-				<view class="creator-avatar" v-if="projectDetail.avatar">
-					<image :src="projectDetail.avatar" mode="aspectFill"></image>
-				</view>
-				<view class="creator-avatar placeholder" v-else>
-					<text>{{ getInitials(getCreatorName()) }}</text>
+				<view class="creator-avatar">
+					<image v-if="projectDetail.avatar" :src="projectDetail.avatar" mode="aspectFill"></image>
+					<image v-else src="/static/profile/default.png" mode="aspectFill"></image>
 				</view>
 				<view class="creator-details">
 					<view class="creator-name">{{ getCreatorName() }}</view>
@@ -234,6 +236,20 @@
 			uni.$off('project_updated');
 		},
 		methods: {
+			// 获取项目浏览量
+			getViewCount() {
+				// 优先从detail中获取浏览量
+				if (this.projectDetail && this.projectDetail.detail && typeof this.projectDetail.detail.view_count !== 'undefined') {
+					return this.projectDetail.detail.view_count;
+				}
+				// 其次从项目详情中获取
+				if (this.projectDetail && typeof this.projectDetail.view_count !== 'undefined') {
+					return this.projectDetail.view_count;
+				}
+				// 默认返回0
+				return 0;
+			},
+
 			// 检查项目是否已收藏
 			async checkProjectFavorite() {
 				const userId = this.$session.getUserValue('user_id');
@@ -359,9 +375,20 @@
 					// 添加时间戳参数，避免从缓存中获取数据
 					const timestamp = Date.now();
 
-					// 获取项目详情
+					// 获取用户ID（如果已登录）
+					let userId = null;
+					try {
+						if (this.$session && this.$session.getUserValue) {
+							userId = this.$session.getUserValue('user_id');
+						}
+					} catch (e) {
+						console.log('获取用户ID失败，使用匿名访问');
+					}
+
+					// 获取项目详情，同时统计浏览量
 					const res = await uniCloud.importObject('Project').getDetailFromList({
 						id: this.projectId,
+						user_id: userId, // 传入用户ID用于浏览量统计
 						timestamp: timestamp // 添加时间戳
 					});
 
@@ -445,7 +472,14 @@
 					console.log('项目图片加载完成调用');
 
 					// 检查是否是我的项目
-					const userId = this.$session.getUserValue('user_id');
+					// 重新获取userId（因为前面可能获取失败）
+					if (!userId) {
+						try {
+							userId = this.$session.getUserValue('user_id');
+						} catch (e) {
+							console.log('重新获取用户ID失败');
+						}
+					}
 					this.isMyProject = userId && this.projectDetail.user_id === userId;
 
 					// 检查是否过期
@@ -604,11 +638,7 @@
 				});
 			},
 
-			// 获取名字首字母作为头像占位符
-			getInitials(name) {
-				if (!name) return '?';
-				return name.charAt(0).toUpperCase();
-			},
+
 
 			// 获取创建者名称
 			getCreatorName() {

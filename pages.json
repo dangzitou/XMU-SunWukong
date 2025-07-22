@@ -46,7 +46,9 @@
 			"path": "pages/project/main_page",
 			"style": {
 				"navigationBarTitleText": "项目广场",
-				"navigationBarBackgroundColor": "#07c160"
+				"navigationBarBackgroundColor": "#07c160",
+				"enablePullDownRefresh": true,
+				"backgroundTextStyle": "dark"
 			}
 		},
 		{

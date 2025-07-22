@@ -638,6 +638,9 @@
 							icon: 'success',
 							duration: 1500,
 							success: () => {
+								// 设置项目列表需要刷新的标志
+								uni.setStorageSync('project_list_need_refresh', true);
+
 								// 通过事件通知应用内其他页面刷新数据
 								uni.$emit('project_updated', {
 									id: option.id,

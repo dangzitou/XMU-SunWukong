@@ -5,9 +5,9 @@
 				<view class="diygw-search">
 					<view class="flex1 align-center flex padding-xs solid radius">
 						<text style="color: #555 !important" class="diy-icon-search"></text>
-						<input class="flex1" name="search" type="" v-model="search" placeholder="请输入名字" />
+						<input class="flex1" name="search" type="" v-model="search" placeholder="请输入名字" @confirm="searchFunction" />
 					</view>
-					<view @tap="navigateTo" data-type="searchFunction" style="color: #333 !important" class="diygw-tag margin-left-xs radius-xs"> 搜索 </view>
+					<view @tap="searchFunction" style="color: #333 !important" class="diygw-tag margin-left-xs radius-xs"> 搜索 </view>
 				</view>
 			</view>
 			<view class="flex flex-wrap diygw-col-24 flex-direction-column">
@@ -18,7 +18,8 @@
 					<view class="">
 						<view v-if="tabsIndex == 0" class="flex-sub">
 							<view v-for="(item, index) in globalData.list[0]" :key="index" class="flex flex-wrap diygw-col-24 items-center flex7-clz" @tap="navigateTo" data-type="page" data-url="/pages/user/project" :data-user_id="item._id">
-								<image :src="item.avatar || '/static/profile/default.png'" class="image3-size diygw-image diygw-col-0 image3-clz" mode="widthFix"></image>
+								<image v-if="item.avatar" :src="item.avatar" class="image3-size diygw-image diygw-col-0 image3-clz" mode="widthFix"></image>
+								<image v-else src="/static/profile/default.png" class="image3-size diygw-image diygw-col-0 image3-clz" mode="widthFix"></image>
 								<view class="flex flex-wrap diygw-col-18 flex-direction-column justify-center items-start flex8-clz">
 									<text class="diygw-col-24 text4-clz"> {{ item.real_name }} </text>
 									<view class="flex flex-wrap diygw-col-24 items-center flex9-clz">
@@ -47,7 +48,8 @@
 						</view>
 						<view v-if="tabsIndex == 1" class="flex-sub">
 							<view v-for="(item, index) in globalData.list[1]" :key="index" class="flex flex-wrap diygw-col-24 items-center flex1-clz" @tap="navigateTo" data-type="page" data-url="/pages/user/project" :data-user_id="item._id">
-								<image :src="item.avatar || '/static/profile/default.png'" class="image-size diygw-image diygw-col-0 image-clz" mode="widthFix"></image>
+								<image v-if="item.avatar" :src="item.avatar" class="image-size diygw-image diygw-col-0 image-clz" mode="widthFix"></image>
+								<image v-else src="/static/profile/default.png" class="image-size diygw-image diygw-col-0 image-clz" mode="widthFix"></image>
 								<view class="flex flex-wrap diygw-col-18 flex-direction-column justify-center items-start flex3-clz">
 									<text class="diygw-col-24 text-clz"> {{ item.real_name }} </text>
 									<view class="flex flex-wrap diygw-col-24 items-center flex4-clz">
@@ -152,23 +154,73 @@
 			// 搜索用户 自定义方法
 			async searchFunction() {
 				let thiz = this;
+
+				// 如果搜索内容没有变化，直接返回
 				if (this.globalData.backup_search != '' && this.globalData.backup_search == this.search) {
 					return;
 				}
 
-				if (this.search == '') {
+				// 如果搜索框为空，恢复原始列表
+				if (this.search == '' || this.search.trim() == '') {
 					this.globalData.list[thiz.tabsIndex] = this.globalData.backup_list[thiz.tabsIndex];
 					this.globalData.backup_search = '';
+					uni.showToast({
+						title: '已清除搜索',
+						icon: 'none',
+						duration: 1500
+					});
 					return;
 				}
 
-				const res = await uniCloud.importObject('User').getList({ type: ['学生', '导师'][thiz.tabsIndex], user_id: this.$session.getUserValue('user_id'), real_name: this.search });
-				this.globalData.list[thiz.tabsIndex] = res.data;
-				this.globalData.backup_search = this.search;
+				try {
+					// 显示搜索中的提示
+					uni.showLoading({
+						title: '搜索中...'
+					});
+
+					const res = await uniCloud.importObject('User').getList({
+						type: ['学生', '导师'][thiz.tabsIndex],
+						user_id: this.$session.getUserValue('user_id'),
+						real_name: this.search.trim()
+					});
+
+					this.globalData.list[thiz.tabsIndex] = res.data;
+					this.globalData.backup_search = this.search.trim();
+
+					// 显示搜索结果
+					uni.hideLoading();
+					if (res.data && res.data.length > 0) {
+						uni.showToast({
+							title: `找到 ${res.data.length} 个用户`,
+							icon: 'none',
+							duration: 1500
+						});
+					} else {
+						uni.showToast({
+							title: '未找到匹配的用户',
+							icon: 'none',
+							duration: 2000
+						});
+					}
+
+				} catch (error) {
+					uni.hideLoading();
+					console.error('搜索用户失败:', error);
+					uni.showToast({
+						title: '搜索失败，请重试',
+						icon: 'none',
+						duration: 2000
+					});
+				}
 			},
 			changeTabs(evt) {
 				let { index } = evt.currentTarget.dataset;
 				if (index == this.tabsIndex) return;
+
+				// 切换标签页时清除搜索状态
+				this.search = '';
+				this.globalData.backup_search = '';
+
 				this.setData({
 					tabsIndex: index
 				});
@@ -198,12 +250,12 @@
 		padding-right: 16rpx;
 	}
 	.image3-clz {
-		border-bottom-left-radius: 24rpx;
+		border-bottom-left-radius: 55rpx;
 		overflow: hidden;
 		top: -20rpx;
-		border-top-left-radius: 24rpx;
-		border-top-right-radius: 24rpx;
-		border-bottom-right-radius: 24rpx;
+		border-top-left-radius: 55rpx;
+		border-top-right-radius: 55rpx;
+		border-bottom-right-radius: 55rpx;
 		position: relative;
 	}
 	.image3-size {
@@ -346,12 +398,12 @@
 		padding-right: 16rpx;
 	}
 	.image-clz {
-		border-bottom-left-radius: 24rpx;
+		border-bottom-left-radius: 55rpx;
 		overflow: hidden;
 		top: -20rpx;
-		border-top-left-radius: 24rpx;
-		border-top-right-radius: 24rpx;
-		border-bottom-right-radius: 24rpx;
+		border-top-left-radius: 55rpx;
+		border-top-right-radius: 55rpx;
+		border-bottom-right-radius: 55rpx;
 		position: relative;
 	}
 	.image-size {

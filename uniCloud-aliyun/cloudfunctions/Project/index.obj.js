@@ -2,6 +2,7 @@
 // jsdoc语法提示教程：https://ask.dcloud.net.cn/docs/#//ask.dcloud.net.cn/article/129
 const db = uniCloud.databaseForJQL()
 const dbCmd = db.command
+const { milliSecond } = require('timestamp')
 
 const {
 	convertStatus,
@@ -31,7 +32,7 @@ module.exports = {
 			msg: "不合格类别"
 		}
 
-		const detail = await db.collection('xm-stp-project_detail').field('_id,title,person_needed,current_members,current_person_request')
+		const detail = await db.collection('xm-stp-project_detail').field('_id,title,person_needed,current_members,current_person_request,view_count')
 			.getTemp()
 
 		var condition = data.name == '竞赛项目' ?
@@ -192,15 +193,52 @@ module.exports = {
 	async getListForMainPage(data){
 		// 这个操作是确保不会获取到竞赛项目
 		const comp = await db.collection('xm-stp-project_cat').where({name:'竞赛项目'}).get()
-		// 竞赛项目
-		var condition = 'status == 1'
-		if(comp.affectedDocs) condition += ` && type_id != '${comp.data[0]._id}'`
-		// 如果有用户id就不拿他的
-		if(data.user_id) condition += ` && user_id != '${data.user_id}'`
 
-		// 获取随机5个
+		// 构建基础查询条件
+		var condition = 'status == 1' // 显示所有已发布的项目
+		if(comp.affectedDocs) condition += ` && type_id != '${comp.data[0]._id}'` // 排除竞赛项目
+
+		// 过滤过期项目 - 只显示未过期的项目
+		// 使用秒级时间戳进行比较，因为数据库中存储的是秒级时间戳
+		const currentTimeSeconds = Math.floor(Date.now() / 1000)
+		condition += ` && ending_time > ${currentTimeSeconds}`
+
+		// 处理类型筛选 - 直接使用分类ID
+		if(data.filter_type_id) {
+			condition += ` && type_id == '${data.filter_type_id}'`
+		}
+
+		// 如果有用户ID，额外显示该用户的草稿项目（但要保持筛选条件）
+		if(data.user_id) {
+			let draftCondition = `user_id == '${data.user_id}' && status == 0`
+
+			// 如果有类型筛选，草稿项目也要符合筛选条件
+			if(data.filter_type_id) {
+				draftCondition += ` && type_id == '${data.filter_type_id}'`
+			}
+
+			// 排除竞赛项目
+			if(comp.affectedDocs) {
+				draftCondition += ` && type_id != '${comp.data[0]._id}'`
+			}
+
+			condition = `(${condition}) || (${draftCondition})`
+		}
+
+		// 支持分页参数
+		const page = data.page || 1;
+		const limit = data.limit || 20; // 默认每页20个项目，比原来的5个多
+		const skip = (page - 1) * limit;
+
+		// 获取项目列表，按创建时间倒序排列
 		const list = await db.collection('xm-stp-project').where(condition)
-			.field('type_id,create_time,ending_time').orderBy('create_time','desc').limit(5).get()
+			.orderBy('create_time','desc').skip(skip).limit(limit).get()
+
+		// 调试：检查项目数据结构
+		if (list.data && list.data.length > 0) {
+			console.log('第一个项目的字段:', Object.keys(list.data[0]))
+			console.log('第一个项目的user_id:', list.data[0].user_id)
+		}
 		if(list.affectedDocs == 0)  return {
 			status:1,
 			msg:"OK",
@@ -216,10 +254,10 @@ module.exports = {
 		}
 		cats = Array.from(new Set(cats))
 
-		// 获取对应的项目详情
+		// 获取对应的项目详情，包括描述、图片和浏览量
 		const detail = await db.collection('xm-stp-project_detail').where({
 			_id:dbCmd.in(projs)
-		}).field('title,person_needed,current_members,current_person_request').get()
+		}).field('title,person_needed,current_members,current_person_request,description,content_text,images,view_count').get()
 
 		for(const i1 in list.data){
 			for(const i2 in detail.data){
@@ -228,6 +266,13 @@ module.exports = {
 					list.data[i1].person_needed = detail.data[i2].person_needed
 					list.data[i1].current_members = detail.data[i2].current_members || 0
 					list.data[i1].current_person_request = detail.data[i2].current_person_request || 0
+					// 添加描述信息
+					list.data[i1].description = detail.data[i2].description || ''
+					list.data[i1].content_text = detail.data[i2].content_text || ''
+					// 添加图片信息
+					list.data[i1].images = detail.data[i2].images || []
+				// 添加浏览量信息
+				list.data[i1].view_count = detail.data[i2].view_count || 0
 					break
 				}
 			}
@@ -284,14 +329,86 @@ module.exports = {
 			}
 		}
 
+		// 处理搜索过滤
+		let filteredProjects = list.data;
+		if(data.search) {
+			const searchTerm = data.search.toLowerCase();
+			filteredProjects = list.data.filter(project => {
+				const title = (project.title || '').toLowerCase();
+				const description = (project.description || '').toLowerCase();
+				const contentText = (project.content_text || '').toLowerCase();
+
+				return title.includes(searchTerm) ||
+					   description.includes(searchTerm) ||
+					   contentText.includes(searchTerm);
+			});
+		}
+
+		// 去重处理，防止同一个项目显示多次
+		const uniqueProjects = [];
+		const seenIds = new Set();
+
+		for(const project of filteredProjects) {
+			if (!seenIds.has(project._id)) {
+				seenIds.add(project._id);
+				uniqueProjects.push(project);
+			}
+		}
+
+		// 获取创建者信息（头像等）
+		if (uniqueProjects.length > 0) {
+			// 收集所有创建者ID
+			const creatorIds = [...new Set(uniqueProjects.map(p => p.user_id).filter(id => id))];
+
+			if (creatorIds.length > 0) {
+				console.log('获取创建者信息，创建者ID列表:', creatorIds);
+
+				// 批量获取创建者信息
+				const creators = await db.collection('xm-stp-user_detail')
+					.where({
+						_id: dbCmd.in(creatorIds)
+					})
+					.field('_id,real_name,username,avatar,introduction')
+					.get();
+
+				console.log('创建者信息查询结果:', creators);
+
+				// 为每个项目添加创建者信息
+				for (const project of uniqueProjects) {
+					if (project.user_id) {
+						const creator = creators.data.find(c => c._id === project.user_id);
+						if (creator) {
+							project.creator_name = creator.real_name || creator.username || '未知用户';
+							project.creator_avatar = creator.avatar || '';
+							project.creator_intro = creator.introduction || '';
+							console.log(`项目 ${project._id} 设置创建者信息:`, {
+								name: project.creator_name,
+								avatar: project.creator_avatar
+							});
+						} else {
+							console.log(`项目 ${project._id} 找不到创建者信息，用户ID: ${project.user_id}`);
+							project.creator_name = '未知用户';
+							project.creator_avatar = '';
+						}
+					}
+				}
+			}
+		}
+
 		return {
 			status:1,
 			msg:"OK",
-			data: list.data
+			data: uniqueProjects,
+			pagination: {
+				page: page,
+				limit: limit,
+				total: uniqueProjects.length,
+				hasMore: uniqueProjects.length >= limit
+			}
 		}
 	},
 	async getDetailFromList(data){
-		const res = await db.collection('xm-stp-project_detail').doc(data.id).field('description,content_text,user_id').get()
+		const res = await db.collection('xm-stp-project_detail').doc(data.id).field('description,content_text,user_id,view_count').get()
 		if(res.affectedDocs == 0) return {
 			status:0,
 			msg: "不存在该项目"
@@ -311,6 +428,66 @@ module.exports = {
 
 		if(!counter.affectedDocs) res.data[0].person_pending = 0
 		else res.data[0].person_pending = counter.data[0].count
+
+		// 处理浏览量统计逻辑
+		if (data.user_id) {
+			try {
+				// 检查用户是否已经浏览过这个项目
+				const viewLogRes = await db.collection('xm-stp-project_view_log')
+					.where({
+						user_id: data.user_id,
+						project_id: data.id
+					})
+					.get();
+
+				// 如果用户没有浏览过这个项目，则增加浏览量并记录
+				if (viewLogRes.affectedDocs === 0) {
+					// 增加项目浏览量
+					const currentViewCount = res.data[0].view_count || 0;
+					const newViewCount = currentViewCount + 1;
+
+					await db.collection('xm-stp-project_detail')
+						.doc(data.id)
+						.update({
+							view_count: newViewCount
+						});
+
+					// 记录用户浏览历史
+					await db.collection('xm-stp-project_view_log')
+						.add({
+							user_id: data.user_id,
+							project_id: data.id,
+							ip_address: data.ip_address || '',
+							user_agent: data.user_agent || ''
+						});
+
+					// 更新返回数据中的浏览量
+					res.data[0].view_count = newViewCount;
+					console.log(`用户 ${data.user_id} 首次浏览项目 ${data.id}，浏览量增加至 ${newViewCount}`);
+				} else {
+					console.log(`用户 ${data.user_id} 已浏览过项目 ${data.id}，不重复统计浏览量`);
+				}
+			} catch (err) {
+				console.error(`处理项目 ${data.id} 浏览量统计失败:`, err);
+			}
+		} else {
+			// 匿名用户也增加浏览量，但不记录浏览历史
+			try {
+				const currentViewCount = res.data[0].view_count || 0;
+				const newViewCount = currentViewCount + 1;
+
+				await db.collection('xm-stp-project_detail')
+					.doc(data.id)
+					.update({
+						view_count: newViewCount
+					});
+
+				res.data[0].view_count = newViewCount;
+				console.log(`匿名用户浏览项目 ${data.id}，浏览量增加至 ${newViewCount}`);
+			} catch (err) {
+				console.error(`处理匿名用户浏览项目 ${data.id} 失败:`, err);
+			}
+		}
 
 		// 同步更新到项目详情表，确保数据一致性
 		try {
@@ -332,12 +509,13 @@ module.exports = {
 	},
 	async getJoin(data) {
 		try {
-			// 获取用户加入的项目关系
+			// 获取用户加入的项目关系，按加入时间倒序排序
 			const memberRelations = await db.collection('xm-stp-project_detail_user_rel')
 				.where({
 					user_id: data.user_id
 				})
-				.field("project_id,user_id,project_position,has_invite_permission")
+				.field("project_id,user_id,project_position,has_invite_permission,join_time")
+				.orderBy('join_time desc')
 				.get();
 
 			if (!memberRelations.data.length) {
@@ -435,6 +613,7 @@ module.exports = {
 						...project,
 						project_position: relation.project_position,
 						has_invite_permission: relation.has_invite_permission,
+						join_time: relation.join_time,
 						project_cat: projectCat,
 						creator_type: creatorType,
 						type: typeInfo?.competition_id ? '竞赛组队' : '项目协作'
@@ -781,6 +960,7 @@ module.exports = {
 			user_id: data.user_id,
 			project_id: projectId,
 			project_position: parseInt(convertPosition("项目负责人"))
+			// join_time 字段会由数据库schema自动设置为当前时间
 		})
 
 		const catList = []
@@ -1539,5 +1719,161 @@ module.exports = {
 	// 提供一个API端点用于执行修复
 	async runMembersFix() {
 		return await this.fixProjectMembers();
+	},
+
+	// 增加项目浏览量
+	async incrementViewCount(data) {
+		try {
+			// 验证必要参数
+			if (!data.project_id) {
+				return {
+					status: 0,
+					msg: "项目ID不能为空"
+				};
+			}
+
+			// 检查项目是否存在
+			const projectRes = await db.collection('xm-stp-project_detail')
+				.doc(data.project_id)
+				.field('_id,view_count')
+				.get();
+
+			if (projectRes.affectedDocs === 0) {
+				return {
+					status: 0,
+					msg: "项目不存在"
+				};
+			}
+
+			const currentViewCount = projectRes.data[0].view_count || 0;
+
+			// 如果有用户ID，检查是否已经浏览过
+			if (data.user_id) {
+				const viewLogRes = await db.collection('xm-stp-project_view_log')
+					.where({
+						user_id: data.user_id,
+						project_id: data.project_id
+					})
+					.get();
+
+				// 如果用户已经浏览过，不重复统计
+				if (viewLogRes.affectedDocs > 0) {
+					return {
+						status: 1,
+						msg: "用户已浏览过该项目",
+						data: {
+							view_count: currentViewCount,
+							is_new_view: false
+						}
+					};
+				}
+
+				// 记录用户浏览历史
+				await db.collection('xm-stp-project_view_log')
+					.add({
+						user_id: data.user_id,
+						project_id: data.project_id,
+						ip_address: data.ip_address || '',
+						user_agent: data.user_agent || ''
+					});
+			}
+
+			// 增加浏览量
+			const newViewCount = currentViewCount + 1;
+			await db.collection('xm-stp-project_detail')
+				.doc(data.project_id)
+				.update({
+					view_count: newViewCount
+				});
+
+			console.log(`项目 ${data.project_id} 浏览量从 ${currentViewCount} 增加到 ${newViewCount}`);
+
+			return {
+				status: 1,
+				msg: "浏览量统计成功",
+				data: {
+					view_count: newViewCount,
+					is_new_view: true
+				}
+			};
+
+		} catch (error) {
+			console.error('增加项目浏览量失败:', error);
+			return {
+				status: 0,
+				msg: "浏览量统计失败: " + error.message
+			};
+		}
+	},
+
+	// 获取用户浏览过的项目列表
+	async getUserViewHistory(data) {
+		try {
+			if (!data.user_id) {
+				return {
+					status: 0,
+					msg: "用户ID不能为空"
+				};
+			}
+
+			const page = data.page || 1;
+			const limit = data.limit || 20;
+			const skip = (page - 1) * limit;
+
+			// 获取用户浏览记录
+			const viewLogsRes = await db.collection('xm-stp-project_view_log')
+				.where({
+					user_id: data.user_id
+				})
+				.orderBy('view_time desc')
+				.skip(skip)
+				.limit(limit)
+				.get();
+
+			if (viewLogsRes.affectedDocs === 0) {
+				return {
+					status: 1,
+					msg: "暂无浏览记录",
+					data: []
+				};
+			}
+
+			// 获取项目详情
+			const projectIds = viewLogsRes.data.map(log => log.project_id);
+			const projectsRes = await db.collection('xm-stp-project_detail')
+				.where({
+					_id: dbCmd.in(projectIds)
+				})
+				.field('_id,title,description,content_text,person_needed,current_members,view_count,create_time')
+				.get();
+
+			// 合并浏览记录和项目详情
+			const result = viewLogsRes.data.map(log => {
+				const project = projectsRes.data.find(p => p._id === log.project_id);
+				return {
+					...log,
+					project: project || null
+				};
+			}).filter(item => item.project !== null);
+
+			return {
+				status: 1,
+				msg: "获取成功",
+				data: result,
+				pagination: {
+					page: page,
+					limit: limit,
+					total: result.length,
+					hasMore: result.length >= limit
+				}
+			};
+
+		} catch (error) {
+			console.error('获取用户浏览历史失败:', error);
+			return {
+				status: 0,
+				msg: "获取浏览历史失败: " + error.message
+			};
+		}
 	}
 }

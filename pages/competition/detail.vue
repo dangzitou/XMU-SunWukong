@@ -21,6 +21,11 @@
                 </view>
             </view>
 
+            <!-- 封面图片 -->
+            <view v-if="competition.avatar" class="cover-image">
+                <image :src="competition.avatar.url || competition.avatar" mode="aspectFill" class="cover-img"></image>
+            </view>
+
             <!-- 竞赛信息 -->
             <view class="info-section">
                 <view class="info-item">
@@ -89,6 +94,7 @@ export default {
                         organizers: true,
                         contractors: true,
                         description: true,
+                        avatar: true,
                         cover_image: true,
                         current_team_request_pending: true,
                         team_completed_enroll: true,
@@ -246,6 +252,19 @@ export default {
     background-color: #fff;
     box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.1);
     z-index: 100;
+}
+
+// 封面图片样式
+.cover-image {
+    margin: 20rpx 0;
+    border-radius: 12rpx;
+    overflow: hidden;
+}
+
+.cover-img {
+    width: 100%;
+    height: 400rpx;
+    border-radius: 12rpx;
 }
 
 // 修改按钮样式

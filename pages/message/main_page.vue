@@ -141,8 +141,36 @@
 						申请: this.requestUnreadCount,
 						系统通知: this.systemUnreadCount
 					});
+
+					// 更新tabbar徽标
+					this.updateTabBarBadge();
 				} catch (error) {
 					console.error('加载消息计数失败', error);
+				}
+			},
+
+			// 更新tabbar徽标
+			updateTabBarBadge() {
+				try {
+					// 计算总的未读消息数量
+					const totalUnreadCount = this.inviteUnreadCount + this.requestUnreadCount + this.systemUnreadCount;
+
+					console.log('更新tabbar徽标，总未读数量:', totalUnreadCount);
+
+					if (totalUnreadCount > 0) {
+						// 设置tabbar徽标
+						uni.setTabBarBadge({
+							index: 2, // 消息tab的索引（从0开始）
+							text: totalUnreadCount > 99 ? '99+' : totalUnreadCount.toString()
+						});
+					} else {
+						// 移除tabbar徽标
+						uni.removeTabBarBadge({
+							index: 2
+						});
+					}
+				} catch (error) {
+					console.error('更新tabbar徽标失败:', error);
 				}
 			},
 			
@@ -197,20 +225,27 @@
 			// 获取系统通知未读计数
 			async loadSystemNoticeCount() {
 				try {
-					// 使用云函数获取未读系统通知计数，而不是直接查询数据库
+					const userId = this.$session.getUserValue('user_id');
+					console.log('获取系统通知计数，用户ID:', userId);
+
+					// 使用云函数获取未读系统通知计数
 					const res = await uniCloud.callFunction({
 						name: 'get_message_count',
-						data: { 
-							user_id: this.$session.getUserValue('user_id'),
+						data: {
+							user_id: userId,
 							type: 'system'
 						}
 					});
-					
+
+					console.log('系统通知计数云函数返回结果:', res);
+
 					if (res && res.result && res.result.status === 1) {
 						console.log('未读系统通知数量:', res.result.count);
-						return res.result.count;
+						return res.result.count || 0;
+					} else {
+						console.log('系统通知计数获取失败:', res.result ? res.result.msg : '无返回结果');
 					}
-					
+
 					return 0; // 默认返回0
 				} catch (error) {
 					console.error('获取系统通知未读计数失败', error);

@@ -3,136 +3,12 @@
 const db = uniCloud.databaseForJQL()
 const dbCmd = db.command
 const { getStatus,getInviteStatus } = require('project-history')
-const { convertPosition, convertStatus } = require('b_project')
 const { getType } = require('identified')
+
+
 const { second } = require('timestamp')
 
-// 发送项目通知的辅助函数（直接添加通知到数据库）
-async function sendNotificationToUser(userId, projectId, title, content, type = 'other', actionData = {}) {
-	console.log('尝试直接向用户发送通知:', { userId, projectId, title, content, type });
 
-	try {
-		// 使用second()函数获取秒级时间戳，符合timestamp类型要求
-		const timestamp = second();
-		// 准备通知数据
-		const notification = {
-			user_id: userId,
-			project_id: projectId,
-			title: title,
-			content: content,
-			type: type,
-			status: 0, // 0表示未读
-			action_data: actionData,
-			create_time: timestamp
-		};
-
-		console.log('准备添加通知:', notification);
-
-		// 直接添加到通知表 - 使用db对象（已在模块顶部初始化并设置了管理员权限）
-		console.log('尝试向 xm-stp-project-notification 表添加通知');
-		const result = await db.collection('xm-stp-project-notification').add(notification);
-		console.log('通知添加结果:', JSON.stringify(result));
-
-		// 检查不同的结果字段
-		const notificationId = result.id || result._id || result.insertedId || (result.inserted && result.inserted.length > 0 ? result.inserted[0] : null);
-
-		// 如果添加成功，返回结果
-		if (notificationId) {
-			console.log('成功添加通知到 xm-stp-project-notification 表，通知ID:', notificationId);
-			return {
-				status: 1,
-				msg: '通知发送成功',
-				id: notificationId
-			};
-		} else {
-			console.error('通知添加失败，无法获取通知ID:', JSON.stringify(result));
-			// 尝试直接返回成功，而不是抛出异常
-			return {
-				status: 1,
-				msg: '通知可能已发送，但无法获取ID',
-				result: JSON.stringify(result)
-			};
-		}
-	} catch (error) {
-		console.error('直接添加通知失败:', error);
-		console.error('错误详情:', error.message);
-		console.error('错误堆栈:', error.stack);
-		return {
-			status: 0,
-			msg: '通知发送失败: ' + error.message
-		};
-	}
-}
-
-/**
- * 发送项目通知
- * @param {Object} userId 接收通知的用户ID
- * @param {Object} projectId 项目ID
- * @param {Object} title 通知标题
- * @param {Object} content 通知内容
- * @param {Object} type 通知类型
- * @param {Object} actionData 额外数据
- */
-async function sendProjectNotification(userId, projectId, title, content, type = 'other', actionData = {}) {
-  console.log('顶部sendProjectNotification函数被调用, 参数:', { userId, projectId, title, type });
-
-  if (!userId || !projectId || !title || !content) {
-    console.error('发送项目通知失败：必要参数缺失');
-    return;
-  }
-
-  try {
-    // 使用已初始化的db对象，不再创建新的数据库实例
-    // 注意：db已经在模块顶部定义并设置了管理员权限
-
-    // 查询项目信息 - 使用字符串格式指定字段避免冲突
-    const project = await db.collection('xm-stp-project_detail').doc(projectId).field('title').get();
-
-    if (!project.data || !project.data.length) {
-      console.error(`发送项目通知失败：找不到项目信息 projectId=${projectId}`);
-      return;
-    }
-
-    const projectName = project.data[0].title;
-    // 使用second()函数获取秒级时间戳，符合timestamp类型要求
-    const timestamp = second();
-    const notificationData = {
-      user_id: userId,
-      project_id: projectId,
-      title: title || `项目"${projectName}"通知`,
-      content: content,
-      type: type,
-      status: 0,
-      action_data: actionData,
-      create_time: timestamp
-    };
-
-    console.log('准备添加顶部通知, 通知数据:', JSON.stringify(notificationData));
-
-    // 添加到项目通知表 - 使用db对象
-    console.log('尝试向 xm-stp-project-notification 表添加通知');
-    const notificationResult = await db.collection('xm-stp-project-notification').add(notificationData);
-    console.log('通知添加结果:', JSON.stringify(notificationResult));
-
-    // 检查不同的结果字段
-    const notificationId = notificationResult.id || notificationResult._id || notificationResult.insertedId ||
-      (notificationResult.inserted && notificationResult.inserted.length > 0 ? notificationResult.inserted[0] : null);
-
-    if (notificationId) {
-      console.log('成功添加通知，通知ID:', notificationId);
-    } else {
-      console.warn('无法获取通知ID，但通知可能已添加:', JSON.stringify(notificationResult));
-    }
-
-    console.log(`成功为用户${userId}发送项目通知，标题：${title}，结果:`, JSON.stringify(notificationResult));
-    return true;
-  } catch (error) {
-    console.error('发送项目通知失败，详细错误:', error);
-    if (error.message) console.error('错误消息:', error.message);
-    if (error.stack) console.error('错误堆栈:', error.stack);
-    return false;
-  }
-}
 
 module.exports = {
 	_before: function () { // 通用预处理器
@@ -151,12 +27,13 @@ module.exports = {
 				};
 			}
 
-			// 查询用户发起的项目
+			// 查询用户发起的项目，按创建时间倒序排序
 			const projects = await db.collection('xm-stp-project_detail')
 				.where({
 					user_id: data.user_id
 				})
-				.field('_id,title,person_needed,current_members,current_person_request,user_id,create_time')
+				.field('_id,title,description,content_text,person_needed,current_members,current_person_request,user_id,create_time')
+				.orderBy('create_time desc')
 				.get();
 
 			if (projects.affectedDocs === 0) {
@@ -225,43 +102,112 @@ module.exports = {
 			msg:"项目不存在"
 		}
 
-		const check = await db.collection('xm-stp-project_app_request')
+		// 1. 首先检查用户是否已经是项目成员
+		const memberCheck = await db.collection('xm-stp-project_detail_user_rel')
 		.where({
 			user_id:data.user_id,
-			project_id:data.project_id,
+			project_id:data.project_id
 		})
 		.get()
 
-		// 如果已存在申请，更新申请内容
-		if(check.affectedDocs == 1) {
-			try {
-				// 只更新comment字段
-				await db.collection('xm-stp-project_app_request')
-				.where({
-					user_id:data.user_id,
-					project_id:data.project_id,
-				})
-				.update({
-					comment:data.introduce
-				})
+		if(memberCheck.affectedDocs > 0) return {
+			status:0,
+			msg:"你已经是该项目的成员"
+		}
 
-				return {
-					status:1,
-					msg:"申请修改成功"
+		// 2. 检查是否有任何状态的申请记录
+		const check = await db.collection('xm-stp-project_app_request')
+		.where({
+			user_id:data.user_id,
+			project_id:data.project_id
+		})
+		.get()
+
+		// 如果已存在申请记录，根据状态进行不同处理
+		if(check.affectedDocs > 0) {
+			const existingRequest = check.data[0];
+
+			// 如果是待审核状态(0)，允许修改申请内容
+			if(existingRequest.status === 0) {
+				try {
+					// 只更新comment字段
+					await db.collection('xm-stp-project_app_request')
+					.where({
+						user_id:data.user_id,
+						project_id:data.project_id,
+						status: 0
+					})
+					.update({
+						comment:data.introduce
+					})
+
+					return {
+						status:1,
+						msg:"申请修改成功"
+					}
+				} catch (error) {
+					console.error('修改申请失败:', error);
+					return {
+						status:0,
+						msg:"修改申请失败: " + error.message
+					}
 				}
-			} catch (error) {
-				console.error('修改申请失败:', error);
+			}
+			// 如果是已接受状态(1)或申请者未读状态(3)，说明已通过审核
+			else if(existingRequest.status === 1 || existingRequest.status === 3) {
 				return {
 					status:0,
-					msg:"修改申请失败: " + error.message
+					msg:"你的申请已通过审核，请查看消息或刷新页面"
+				}
+			}
+			// 如果是已拒绝状态(2)，允许重新申请
+			else if(existingRequest.status === 2) {
+				try {
+					// 更新现有申请记录，重置为待审核状态
+					await db.collection('xm-stp-project_app_request')
+					.where({
+						user_id:data.user_id,
+						project_id:data.project_id
+					})
+					.update({
+						comment:data.introduce,
+						status:0,
+						result: null // 清除之前的处理结果
+					})
+
+					// 更新项目申请数量
+					await db.collection('xm-stp-project_detail').where({_id:data.project_id})
+					.update({
+						'current_person_request':checkProject.data[0].current_person_request + 1
+					})
+
+					return {
+						status:1,
+						msg:"重新申请成功"
+					}
+				} catch (error) {
+					console.error('重新申请失败:', error);
+					return {
+						status:0,
+						msg:"重新申请失败: " + error.message
+					}
+				}
+			}
+			// 其他状态
+			else {
+				return {
+					status:0,
+					msg:"你已经申请过该项目，请等待审核结果"
 				}
 			}
 		}
 
+		// 3. 检查是否被邀请
 		const check2 = await db.collection('xm-stp-project_app_invite')
 		.where({
 			user_id:data.user_id,
 			project_id:data.project_id,
+			status: parseInt(getInviteStatus('等待回复')) // 只检查等待回复的邀请
 		})
 		.get()
 		if(check2.affectedDocs == 1) return {
@@ -269,7 +215,7 @@ module.exports = {
 			msg:"你已被邀请于这个项目"
 		}
 
-
+		// 4. 创建新的申请记录
 		const transaction = await db.startTransaction()
 		await db.collection('xm-stp-project_app_request').add({
 			user_id:data.user_id,
@@ -283,7 +229,6 @@ module.exports = {
 			project_id:data.project_id,
 			action:parseInt(getStatus('申请加入'))
 		})
-
 
 		await db.collection('xm-stp-project_detail').where({_id:data.project_id})
 		.update({
@@ -351,7 +296,7 @@ module.exports = {
 	async inviteJoin(data){
 		if(data.self_user == data.user_id) return {
 			status: 0,
-			msg: "不允许自己邀请自己"
+			msg: "不允许邀请自己"
 		}
 
 		const res = await db.collection('xm-stp-project_detail').where({
@@ -365,17 +310,19 @@ module.exports = {
 
 		let check = await db.collection('xm-stp-project_app_invite').where({
 			user_id: data.user_id,
-			project_id:data.proj_id
+			project_id:data.proj_id,
+			status: parseInt(getInviteStatus('等待回复')) // 只检查等待回复的邀请
 		}).field('_id').get()
 
 		if(check.affectedDocs) return {
 			status: 0,
-			msg: "该用户已经有被邀请过"
+			msg: "该用户已被邀请过"
 		}
 
 		check = await db.collection('xm-stp-project_app_request').where({
 			user_id: data.user_id,
-			project_id:data.proj_id
+			project_id:data.proj_id,
+			status: 0 // 只检查待审核状态的申请
 		}).field('_id').get()
 
 		if(check.affectedDocs) return {
@@ -418,222 +365,7 @@ module.exports = {
 			data:[]
 		}
 	},
-	async getJoinList(data){
-		// 检查参数
-		if (!data.user_id && !data.project_id) {
-			return {
-				status: 0,
-				msg: "请提供用户ID或项目ID"
-			}
-		}
 
-		// 构建查询条件
-		let whereCondition = {};
-
-		// 如果提供了用户ID，查询该用户加入的所有项目
-		if (data.user_id) {
-			whereCondition.user_id = data.user_id;
-		}
-
-		// 如果提供了项目ID，查询该项目的所有成员
-		if (data.project_id) {
-			whereCondition.project_id = data.project_id;
-		}
-
-		// 只从 xm-stp-project_detail_user_rel 表获取数据，不再混合申请表数据
-		const memberRelations = await db.collection('xm-stp-project_detail_user_rel')
-			.where(whereCondition)
-			.field("project_id,user_id,project_position,has_invite_permission") // 添加has_invite_permission字段
-			.get();
-
-		if(!memberRelations.data.length) {
-			console.log('未找到项目成员关系');
-			return {
-				status: 1,
-				msg: "OK",
-				data: []
-			}
-		}
-
-		// 获取所有项目ID
-		const projIds = [...new Set(memberRelations.data.map(m => m.project_id))];
-
-		// 获取所有用户ID
-		const userIds = [...new Set(memberRelations.data.map(m => m.user_id))];
-
-		// 查询这些用户的详细信息
-		const userDetails = await db.collection('xm-stp-user_detail')
-			.where({
-				'_id': dbCmd.in(userIds)
-			})
-			.field('_id,real_name,nickname,year,education,college,major,contact')
-			.get();
-
-		// 查询项目详情
-		const projectDetails = await db.collection('xm-stp-project_detail')
-			.where({
-				'_id': dbCmd.in(projIds)
-			})
-			.field('_id,title,user_id,person_needed,create_time')
-			.get();
-
-		// 查询项目基本信息
-		const projects = await db.collection('xm-stp-project')
-			.where({
-				'_id': dbCmd.in(projIds)
-			})
-			.field('_id,type_id,competition_id,ending_time')
-			.get();
-
-		// 提取项目类型ID
-		const prjTypeList = [...new Set(projects.data.map(p => p.type_id).filter(id => id))];
-
-		// 提取竞赛ID
-		const compIds = [...new Set(projects.data.map(p => p.competition_id).filter(id => id))];
-
-		// 查询项目类型信息
-		let projectTypeDb = { data: [] };
-		if (prjTypeList.length) {
-			projectTypeDb = await db.collection('xm-stp-project_cat')
-				.where({
-					_id: dbCmd.in(prjTypeList)
-				})
-				.get();
-		}
-
-		// 查询竞赛信息
-		let compList = { data: [] };
-		if (compIds.length) {
-			compList = await db.collection('xm-stp-project_comp_detail')
-				.where({
-					_id: dbCmd.in(compIds)
-				})
-				.field('_id,title')
-				.get();
-		}
-
-		// 合并项目类型信息到项目中
-		for (const project of projects.data) {
-			if (project.type_id) {
-				const typeInfo = projectTypeDb.data.find(t => t._id === project.type_id);
-				if (typeInfo) {
-					project.type = typeInfo.name;
-				}
-				delete project.type_id;
-			}
-
-			if (project.competition_id) {
-				const compInfo = compList.data.find(c => c._id === project.competition_id);
-				if (compInfo) {
-					project.comp = compInfo.title;
-				}
-				delete project.competition_id;
-			}
-		}
-
-		// 为每个成员关系添加详细信息
-		const result = [];
-
-		for (const relation of memberRelations.data) {
-			// 查找用户信息
-			const userInfo = userDetails.data.find(u => u._id === relation.user_id);
-			if (!userInfo) {
-				console.log(`跳过无效的用户ID: ${relation.user_id}`);
-				continue; // 跳过没有用户信息的关系记录
-			}
-
-			// 查找项目信息
-			const projectDetail = projectDetails.data.find(p => p._id === relation.project_id);
-			if (!projectDetail) {
-				console.log(`跳过无效的项目ID: ${relation.project_id}`);
-				continue; // 跳过没有项目信息的关系记录
-			}
-
-			const projectInfo = projects.data.find(p => p._id === relation.project_id) || {};
-
-			// 确定是否为创建者
-			const isCreator = projectDetail.user_id === relation.user_id;
-
-			// 如果是按用户ID查询，且该用户是项目创建者，则跳过该项目
-			if (data.user_id && !data.project_id && isCreator) {
-				console.log(`跳过用户创建的项目: ${relation.project_id}`);
-				continue;
-			}
-
-			// 合并所有信息
-			const memberData = {
-				project_id: relation.project_id,
-				user_id: relation.user_id,
-				project_position: relation.project_position,
-				is_creator: isCreator,
-				has_invite_permission: !!relation.has_invite_permission, // 确保返回邀请权限字段
-				// 用户信息
-				real_name: userInfo.real_name || '',
-				nickname: userInfo.nickname || '',
-				year: userInfo.year || '',
-				education: userInfo.education || '',
-				college: userInfo.college || '',
-				major: userInfo.major || '',
-				contact: userInfo.contact || '',
-				// 项目信息
-				title: projectDetail.title || '',
-				person_needed: projectDetail.person_needed || 0,
-				ending_time: projectInfo.ending_time || 0,
-				type: projectInfo.type || '',
-			};
-
-			if (projectInfo.comp) {
-				memberData.comp = projectInfo.comp;
-			}
-
-			result.push(memberData);
-		}
-
-		// 如果是通过项目ID查询，确保项目创建者始终包含在结果中
-		if (data.project_id && projectDetails.data.length > 0) {
-			const project = projectDetails.data[0];
-			const creatorId = project.user_id;
-
-			// 检查创建者是否已在结果中
-			if (creatorId && !result.some(r => r.user_id === creatorId)) {
-				// 查找创建者信息
-				const creatorInfo = userDetails.data.find(u => u._id === creatorId);
-				if (creatorInfo) {
-					const projectInfo = projects.data.find(p => p._id === data.project_id) || {};
-
-					// 添加创建者信息
-					result.push({
-						project_id: data.project_id,
-						user_id: creatorId,
-						project_position: 1, // 1表示项目负责人
-						is_creator: true,
-						has_invite_permission: true, // 创建者默认有邀请权限
-						// 用户信息
-						real_name: creatorInfo.real_name || '',
-						nickname: creatorInfo.nickname || '',
-						year: creatorInfo.year || '',
-						education: creatorInfo.education || '',
-						college: creatorInfo.college || '',
-						major: creatorInfo.major || '',
-						contact: creatorInfo.contact || '',
-						// 项目信息
-						title: project.title || '',
-						person_needed: project.person_needed || 0,
-						ending_time: projectInfo.ending_time || 0,
-						type: projectInfo.type || '',
-					});
-				}
-			}
-		}
-
-		console.log(`getJoinList 返回有效成员数: ${result.length}`);
-
-		return {
-			status: 1,
-			msg: "OK",
-			data: result
-		}
-	},
 	async getListFromMsg(data){
 		if (!data.user_id) {
 			return {
@@ -691,7 +423,7 @@ module.exports = {
 				.where({
 					'_id': dbCmd.in(userIds)
 				})
-				.field('_id,name,avatar')
+				.field('_id,real_name,nickname,avatar')
 				.get()
 
 				// 组合项目和用户信息
@@ -706,7 +438,7 @@ module.exports = {
 						project_id: req.project_id,
 						user_id: req.user_id,
 						title: projectInfo.title || '',
-						name: userInfo.name || '',
+						name: userInfo.real_name || userInfo.nickname || '申请者',
 						avatar: userInfo.avatar || '',
 						create_time: req.create_time,
 						comment: req.comment || '',
@@ -718,8 +450,8 @@ module.exports = {
 
 		// 收到的邀请（别人邀请我加入项目）
 		const invitedProj = await db.collection('xm-stp-project_app_invite')
-		.where({'user_id':data.user_id,'status':parseInt(getInviteStatus('等待回复'))})
-		.field('project_id,create_time,comment')
+		.where({'user_id':data.user_id, 'status': dbCmd.in([0,1,2])})
+		.field('project_id,create_time,comment,status')
 		.orderBy('create_time desc')
 		.get()
 
@@ -792,7 +524,7 @@ module.exports = {
 			.where({
 				'_id': dbCmd.in(ownerIds)
 			})
-			.field('_id,name,avatar')
+			.field('_id,real_name,nickname,avatar')
 			.get()
 
 			for(const req of sentRequests.data){
@@ -809,7 +541,7 @@ module.exports = {
 					comment: req.comment || '',
 					title: projectDetail.title || '',
 					owner_id: projectDetail.user_id || '',
-					owner_name: owner.name || '',
+					owner_name: owner.real_name || owner.nickname || '项目创建者',
 					owner_avatar: owner.avatar || ''
 				})
 			}
@@ -836,7 +568,7 @@ module.exports = {
 				.where({
 					'_id': dbCmd.in(userIds)
 				})
-				.field('_id,name,avatar')
+				.field('_id,real_name,nickname,avatar')
 				.get()
 
 				for(const invite of sentInvites.data){
@@ -853,7 +585,7 @@ module.exports = {
 						create_time: invite.create_time,
 						comment: invite.comment || '',
 						title: projectInfo.title || '',
-						name: userInfo.name || '',
+						name: userInfo.real_name || userInfo.nickname || '被邀请者',
 						avatar: userInfo.avatar || ''
 					})
 				}
@@ -871,21 +603,93 @@ module.exports = {
 			}
 		}
 	},
-	async approveJoin(params){
-		// ... existing code ...
-		// 发送系统通知
-		console.log(`准备发送请求同意通知, user_id: ${params.user_id}, project_id: ${params.project_id}`);
-		await sendProjectNotification(
-			params.user_id,
-			params.project_id,
-			`项目申请已通过`,
-			`您申请加入的项目"${project_detail.data[0].title}"已通过审核，现在可以参与项目了。`,
-			'approve_join',
-			{
-				project_id: params.project_id
-			}
-		);
-		// ... existing code ...
+	async approveJoin(data){
+		const check = await db.collection('xm-stp-project_app_invite')
+		.where({
+			project_id:data.project_id,
+			user_id:data.user_id
+		})
+		.get()
+
+		if(!check.affectedDocs) return{
+			status:0,
+			msg:"项目邀请不存在"
+		}
+		else if(check.data[0].status == getInviteStatus('已接受'))
+		return {
+			status:0,
+			msg: "项目早已接受"
+		}
+
+		const user = await db.collection('xm-stp-user_detail')
+		.doc(data.user_id)
+		.field('type')
+		.get()
+
+		const userType = await getType(user.data[0].type)
+
+		const transaction = await db.startTransaction()
+
+		await db.collection('xm-stp-project_app_invite')
+		.where({
+			project_id:data.project_id,
+			user_id:data.user_id
+		})
+		.update({
+			status: parseInt(getInviteStatus('已接受'))
+		})
+
+		await db.collection('xm-stp-project_detail_user_rel')
+		.add({
+			project_id:data.project_id,
+			user_id:data.user_id,
+			project_position: userType.name == "老师"?0:2
+			// join_time 字段会由数据库schema自动设置为当前时间
+		})
+
+		await db.collection('xm-stp-project_app_history').add({
+			user_id:data.user_id,
+			project_id:data.project_id,
+			action:parseInt(getStatus('接受邀请'))
+		})
+
+		await transaction.commit()
+
+		return {
+			status: 1,
+			msg: "接受邀请成功"
+		}
+	},
+
+	// 获取未读通知计数
+	async getUnreadNotificationCount(data) {
+		try {
+			console.log('获取未读通知计数，用户ID:', data.user_id);
+
+			// 使用database()而不是databaseForJQL()来查询通知
+			const notificationDb = uniCloud.database();
+			const result = await notificationDb.collection('xm-stp-project-notification')
+				.where({
+					user_id: data.user_id,
+					status: 0 // 0表示未读
+				})
+				.count();
+
+			console.log('未读通知查询结果:', result);
+
+			return {
+				status: 1,
+				count: result.total || 0,
+				msg: '获取成功'
+			};
+		} catch (error) {
+			console.error('获取未读通知计数失败:', error);
+			return {
+				status: 0,
+				count: 0,
+				msg: '获取失败: ' + error.message
+			};
+		}
 	},
 	async declineJoin(data){
 		const check = await db.collection('xm-stp-project_app_invite')
@@ -937,235 +741,7 @@ module.exports = {
 			msg: "拒绝邀请成功"
 		}
 	},
-	async updateProjectMembers(data){
-		const check = await db.collection('xm-stp-project_detail')
-		.where({_id:data.id,user_id:data.user_id}).field('_id').get()
-		if(!check.affectedDocs) return {
-			status:0,
-			msg:'不存在该项目'
-		}
 
-		// 如果是请求获取统计数据
-		if (data.action === 'getStats') {
-			try {
-				// 获取项目详情
-				const projectDetail = await db.collection('xm-stp-project_detail')
-					.doc(data.id)
-					.field('current_members, person_needed')
-					.get();
-
-				// 获取申请人数
-				const requestCount = await db.collection('xm-stp-project_app_request')
-					.where({
-						project_id: data.id,
-						status: 0 // 只计算待处理的申请
-					})
-					.count();
-
-				// 获取成员数量
-				const memberCount = await db.collection('xm-stp-project_detail_user_rel')
-					.where({
-						project_id: data.id,
-						project_position: dbCmd.neq(1) // 不统计项目负责人
-					})
-					.count();
-
-				// 组装统计结果
-				const statsResult = {
-					current_members: memberCount.total > 0 ? memberCount.total :
-						(projectDetail.data.length > 0 ? projectDetail.data[0].current_members || 0 : 0),
-					current_person_request: requestCount.total > 0 ? requestCount.total : 0,
-					person_needed: projectDetail.data.length > 0 ? projectDetail.data[0].person_needed || 0 : 0
-				};
-
-				// 更新项目详情表中的统计数据
-				await db.collection('xm-stp-project_detail')
-					.doc(data.id)
-					.update({
-						current_members: statsResult.current_members,
-						current_person_request: statsResult.current_person_request
-					});
-
-				return {
-					status: 1,
-					msg: "获取统计数据成功",
-					data: statsResult
-				};
-			} catch (error) {
-				console.error('获取项目统计数据失败:', error);
-				return {
-					status: 0,
-					msg: "获取统计数据失败: " + error.message
-				};
-			}
-		}
-
-		/**
-		 * 这里分成3种情况
-		 * 1. 从申请中被选入待定甚至是内定成员
-		 * 2. 从待定或内定成员被踢回申请中（如果是邀请来的则最低只能在待定）
-		 * 3. 待定和内定成员之间变换
-		 *
-		 * 1 的情况是需要再project的user_rel里边注册，并且在request表进行更新
-		 * 2 是需要从user_rel删除，在request表中更新
-		 * 3 的则只需要在user_rel里边调整就行了
-		 */
-		const list = {unpickedToMember:[], memberToUnpicked:[],  memberAction:[]}
-		for(const i in data.data){
-
-			switch(data.data[i].from){
-				case 'pending':
-				case 'confirm':
-					if(['pending','confirm'].includes(data.data[i].to)) list.memberAction.push(data.data[i])
-					else if(data.data[i].to == 'unpicked') list.memberToUnpicked.push(data.data[i])
-				break;
-				case 'unpicked':
-					list.unpickedToMember.push(data.data[i])
-				break;
-			}
-
-		}
-
-		// 做2
-		if(list.memberToUnpicked.length){
-			const userList = []
-			for(const i in list.memberToUnpicked) userList.push(list.memberToUnpicked[i].user_id)
-
-			const checkInvited = await db.collection('xm-stp-project_app_invite').where({
-				'user_id':dbCmd.in(userList)
-			}).get()
-
-			if(checkInvited.affectedDocs) return {
-				status:0,
-				msg:"你邀请的成员是不能放入（还未选上），若不要改成员请放在待定成员中"
-			}
-
-			await db.collection('xm-stp-project_detail_user_rel').where({
-				'user_id':dbCmd.in(userList),
-				'project_id':data.id
-			}).remove()
-
-			await db.collection('xm-stp-project_app_request').where({
-				user_id:dbCmd.in(userList),
-				project_id:data.id
-			})
-			.update({
-				status:0
-			})
-
-		}
-
-		// 做3
-		if(list.memberAction.length){
-			const pendingToConfirm = []
-			const confirmToPending = []
-
-			for(const i in list.memberAction){
-				if(list.memberAction[i].from == 'pending' && list.memberAction[i].to == 'confirm')
-					pendingToConfirm.push(list.memberAction[i].user_id)
-				else
-					confirmToPending.push(list.memberAction[i].user_id)
-			}
-
-			if(pendingToConfirm.length)
-				await db.collection('xm-stp-project_detail_user_rel').where({
-					'user_id':dbCmd.in(pendingToConfirm),
-					'project_id':data.id
-				}).update({
-					'project_position':parseInt(convertPosition('成员'))
-				})
-
-			if(confirmToPending.length)
-				await db.collection('xm-stp-project_detail_user_rel').where({
-					'user_id':dbCmd.in(confirmToPending),
-					'project_id':data.id
-				}).update({
-					'project_position':parseInt(convertPosition('待定成员'))
-				})
-		}
-
-		// 做1
-		if(list.unpickedToMember.length){
-			const toPending = []
-			const toConfirm = []
-			for(const i in list.unpickedToMember){
-				if(list.unpickedToMember[i].to == 'pending')
-					toPending.push(list.unpickedToMember[i].user_id)
-				else
-					toConfirm.push(list.unpickedToMember[i].user_id)
-			}
-
-			await db.collection('xm-stp-project_app_request').where({
-				user_id:dbCmd.in(toPending.concat(toConfirm)),
-				project_id:data.id
-			})
-			.update({
-				status:1
-			})
-
-			if(toPending.length){
-				const list = []
-				for(const i in toPending)
-					list.push({
-					'user_id':toPending[i],
-					'project_id':data.id,
-					'project_position':parseInt(convertPosition('待定成员'))
-				})
-
-				await db.collection('xm-stp-project_detail_user_rel').add(list)
-			}
-
-
-			if(toConfirm.length){
-				const list = []
-				for(const i in toConfirm)
-					list.push({
-					'user_id':toConfirm[i],
-					'project_id':data.id,
-					'project_position':parseInt(convertPosition('成员'))
-				})
-
-				await db.collection('xm-stp-project_detail_user_rel').add(list)
-			}
-
-			// 更新项目中的成员数量
-			try {
-				// 获取当前成员数
-				const projectDetailRes = await db.collection('xm-stp-project_detail')
-					.doc(data.id)
-					.field('current_members, person_needed')
-					.get();
-
-				if (projectDetailRes.data && projectDetailRes.data.length > 0) {
-					let currentMembers = projectDetailRes.data[0].current_members || 0;
-					const personNeeded = projectDetailRes.data[0].person_needed || 10;
-
-					// 增加成员数量，最多不超过需求人数
-					const addedMembers = toPending.length + toConfirm.length;
-					let newMembers = currentMembers + addedMembers;
-					if (newMembers > personNeeded) {
-						newMembers = personNeeded;
-					}
-
-					// 更新项目详情表中的成员数
-					await db.collection('xm-stp-project_detail')
-						.doc(data.id)
-						.update({
-							current_members: newMembers
-						});
-					console.log(`已更新项目 ${data.id} 的成员数为 ${newMembers}`);
-				}
-			} catch (memberError) {
-				console.error('更新项目成员数失败:', memberError);
-				// 错误不影响主流程
-			}
-		}
-
-		return {
-			status:1,
-			msg:"更新成功"
-		}
-	},
 	async checkRequestStatus(data) {
 		try {
 			if (!data.project_id || !data.user_id) {
@@ -1175,7 +751,23 @@ module.exports = {
 				};
 			}
 
-			// 只检查用户是否在xm-stp-project_app_request表中有申请记录
+			// 1. 首先检查用户是否已经是项目成员
+			const memberRes = await db.collection('xm-stp-project_detail_user_rel')
+				.where({
+					user_id: data.user_id,
+					project_id: data.project_id
+				})
+				.get();
+
+			if (memberRes.affectedDocs > 0) {
+				return {
+					status: 1,
+					msg: "用户已是项目成员",
+					data: false // 不需要显示申请按钮
+				};
+			}
+
+			// 2. 检查用户是否在xm-stp-project_app_request表中有申请记录
 			const requestRes = await db.collection('xm-stp-project_app_request')
 				.where({
 					user_id: data.user_id,
@@ -1334,285 +926,9 @@ module.exports = {
 		}
 	},
 
-	// 拒绝用户申请的完整流程处理方法
-	async rejectUserRequest(data) {
-		try {
-			// 设置管理员权限，允许访问数据库
-			db.setUser({
-				role: ['admin']
-			});
 
-			if (!data.project_id || !data.user_id || !data.operator_id) {
-				return {
-					status: 0,
-					msg: "参数不完整，请提供项目ID、申请用户ID和操作者ID"
-				};
-			}
 
-			// 1. 首先验证操作者是否是项目的创建者
-			const projectCheck = await db.collection('xm-stp-project_detail')
-				.where({_id: data.project_id, user_id: data.operator_id})
-				.field('_id')
-				.get();
 
-			if (!projectCheck.affectedDocs) {
-				return {
-					status: 0,
-					msg: "权限不足，只有项目创建者可以拒绝申请"
-				};
-			}
-
-			// 2. 检查是否存在申请记录
-			const requestCheck = await db.collection('xm-stp-project_app_request')
-				.where({
-					user_id: data.user_id,
-					project_id: data.project_id
-				})
-				.get();
-
-			if (!requestCheck.affectedDocs) {
-				return {
-					status: 0,
-					msg: "未找到有效的申请记录"
-				};
-			}
-
-			// 3. 只执行基本的拒绝操作 - 更新申请状态为申请者未读(3)
-			try {
-				console.log('准备更新拒绝申请状态');
-
-				// 3.1 更新申请记录的状态为申请者未读(3)，而不是直接设为已拒绝(2)
-				const updateData = {
-					status: 3, // 状态3表示申请者未读，处理结果是拒绝
-					result: 2,  // 增加result字段记录实际处理结果：2表示已拒绝
-				};
-
-				// 如果提供了拒绝理由，则添加到更新数据中
-				if (data.reject_reason && data.reject_reason.trim()) {
-					updateData.reject_reason = data.reject_reason.trim();
-				}
-
-				console.log('更新数据:', updateData);
-
-				const reqRes = await db.collection('xm-stp-project_app_request')
-					.where({
-						user_id: data.user_id,
-						project_id: data.project_id
-					})
-					.update(updateData);
-
-				console.log('更新结果:', reqRes);
-
-				// 判断是否更新成功
-				if (reqRes && reqRes.updated > 0) {
-					// 同时发送一条系统消息给申请者
-					try {
-						const projectDetail = await db.collection('xm-stp-project_detail')
-							.doc(data.project_id)
-							.field('title')
-							.get();
-
-						const projectTitle = projectDetail.data.length ? projectDetail.data[0].title || '项目' : '项目';
-
-						// 构建消息内容，只有在有拒绝理由时才添加拒绝理由部分
-						let messageContent = `您申请加入的项目「${projectTitle}」已被拒绝。`;
-						if (data.reject_reason && data.reject_reason.trim()) {
-							messageContent += `拒绝理由：${data.reject_reason.trim()}`;
-						}
-
-						await db.collection('xm-stp-message').add({
-							user_id: data.user_id,
-							title: '申请被拒绝通知',
-							content: messageContent,
-							type: 'system',
-							status: 0, // 0表示未读
-							create_time: second() // 保持这里为秒级时间戳
-						});
-					} catch (msgError) {
-						console.error('发送拒绝通知失败', msgError);
-						// 不影响主流程，失败不返回错误
-					}
-
-					return {
-						status: 1,
-						msg: "拒绝申请成功"
-					};
-				} else {
-					return {
-						status: 0,
-						msg: "拒绝申请失败：数据未更新"
-					};
-				}
-			} catch (dbError) {
-				console.error('数据库操作失败:', dbError);
-				return {
-					status: 0,
-					msg: "拒绝申请失败: " + dbError.message
-				};
-			}
-		} catch (error) {
-			console.error('拒绝用户申请失败:', error);
-			return {
-				status: 0,
-				msg: "处理申请失败: " + error.message
-			};
-		}
-	},
-
-	// 新增：通过用户申请的完整流程处理方法
-	async approveUserRequest(data) {
-		try {
-			// 设置管理员权限，允许访问数据库
-			db.setUser({
-				role: ['admin']
-			});
-
-			if (!data.project_id || !data.user_id || !data.operator_id) {
-				return {
-					status: 0,
-					msg: "参数不完整，请提供项目ID、申请用户ID和操作者ID"
-				};
-			}
-
-			// 1. 首先验证操作者是否是项目的创建者
-			const projectCheck = await db.collection('xm-stp-project_detail')
-				.where({_id: data.project_id, user_id: data.operator_id})
-				.field('_id')
-				.get();
-
-			if (!projectCheck.affectedDocs) {
-				return {
-					status: 0,
-					msg: "权限不足，只有项目创建者可以通过申请"
-				};
-			}
-
-			// 2. 检查是否存在申请记录
-			const requestCheck = await db.collection('xm-stp-project_app_request')
-				.where({
-					user_id: data.user_id,
-					project_id: data.project_id
-				})
-				.get();
-
-			if (!requestCheck.affectedDocs) {
-				return {
-					status: 0,
-					msg: "未找到有效的申请记录"
-				};
-			}
-
-			// 3. 获取用户类型，用于决定项目中的职位
-			const user = await db.collection('xm-stp-user_detail')
-				.doc(data.user_id)
-				.field('type')
-				.get();
-
-			let projectPosition = 3; // 修改为3，表示待定成员
-			if (user.data && user.data.length > 0) {
-				const userType = await getType(user.data[0].type);
-				if (userType && userType.name === "老师") {
-					projectPosition = 0; // 老师设置为指导老师(0)
-				}
-			}
-
-			// 4. 使用直接数据库操作而不是事务
-			try {
-				// 4.1 更新申请记录的状态为申请者未读(3)，而不是直接设为已接受(1)
-				const reqUpdateRes = await db.collection('xm-stp-project_app_request')
-					.where({
-						user_id: data.user_id,
-						project_id: data.project_id
-					})
-					.update({
-						status: 3, // 状态3表示申请者未读，处理结果是接受
-						result: 1   // 增加result字段记录实际处理结果：1表示已接受
-					});
-
-				// 4.2 添加用户到项目成员关系表
-				const addMemberRes = await db.collection('xm-stp-project_detail_user_rel').add({
-					project_id: data.project_id,
-					user_id: data.user_id,
-					project_position: projectPosition
-				});
-
-				// 4.3 更新项目当前成员数量
-				try {
-					// 先获取当前成员数
-					const projectDetailRes = await db.collection('xm-stp-project_detail')
-						.doc(data.project_id)
-						.field('current_members, person_needed')
-						.get();
-
-					if (projectDetailRes.data && projectDetailRes.data.length > 0) {
-						let currentMembers = projectDetailRes.data[0].current_members || 0;
-						const personNeeded = projectDetailRes.data[0].person_needed || 10;
-
-						// 确保不超过需求人数上限
-						if (currentMembers < personNeeded) {
-							currentMembers++;
-
-							// 更新项目详情表中的成员数
-							await db.collection('xm-stp-project_detail')
-								.doc(data.project_id)
-								.update({
-									current_members: currentMembers
-								});
-							console.log(`已更新项目 ${data.project_id} 的成员数为 ${currentMembers}`);
-						}
-					}
-				} catch (memberError) {
-					console.error('更新项目成员数失败:', memberError);
-					// 错误不影响主流程
-				}
-
-				// 4.4 添加操作历史记录
-				await db.collection('xm-stp-project_app_history').add({
-					user_id: data.user_id,
-					project_id: data.project_id,
-					action: 2 // 使用固定数字代替getStatus('申请被接受')
-				});
-
-				// 4.5 发送系统消息通知申请者 - 使用新的通知函数
-				try {
-					await this.sendProjectNotification({
-						user_id: data.user_id,
-						project_id: data.project_id,
-						title: '申请通过通知',
-						content: `恭喜！您申请加入的项目「{{projectTitle}}」已被通过，您现在是该项目的待定成员。项目负责人后续可能会将您转为正式成员。`,
-						type: 'member_status',
-						action_data: {
-							from: 'application',
-							to: 'pending',
-							operator_id: data.operator_id
-						}
-					});
-
-					console.log(`已成功发送申请通过通知给用户 ${data.user_id}`);
-				} catch (notifyError) {
-					// 记录通知发送错误，但不影响主流程
-					console.error('发送申请通过通知失败，但申请已被成功接受:', notifyError);
-				}
-
-				return {
-					status: 1,
-					msg: "通过申请成功"
-				};
-			} catch (dbError) {
-				console.error('数据库操作失败:', dbError);
-				return {
-					status: 0,
-					msg: "通过申请失败: " + dbError.message
-				};
-			}
-		} catch (error) {
-			console.error('通过用户申请失败:', error);
-			return {
-				status: 0,
-				msg: "处理申请失败: " + error.message
-			};
-		}
-	},
 	// 新增：手动标记申请为已读的方法
 	async markRequestAsRead(data) {
 		try {
@@ -1883,741 +1199,29 @@ module.exports = {
 			return false;
 		}
 	},
-	// 管理项目成员状态和权限的方法
-	async manageMember(data) {
+
+
+
+
+
+
+
+
+
+
+	// 获取项目图片 - 代理方法，调用ProjectAsset云函数
+	async getProjectImages(params) {
 		try {
-			// 设置管理员权限，允许访问数据库
-			db.setUser({
-				role: ['admin']
-			});
-
-			if (!data.project_id || !data.user_id || !data.operator_id || !data.action) {
-				return {
-					status: 0,
-					msg: "参数不完整，请提供项目ID、成员ID、操作者ID和操作类型"
-				};
-			}
-
-			// 1. 首先验证操作者是否是项目的创建者或有权限的成员
-			const projectCheck = await db.collection('xm-stp-project_detail')
-				.where({_id: data.project_id})
-				.field('_id,user_id')
-				.get();
-
-			if (!projectCheck.affectedDocs) {
-				return {
-					status: 0,
-					msg: "项目不存在"
-				};
-			}
-
-			// 检查操作者是否是项目创建者
-			const isCreator = projectCheck.data[0].user_id === data.operator_id;
-
-			// 如果不是创建者，检查是否有邀请权限
-			if (!isCreator) {
-				const operatorCheck = await db.collection('xm-stp-project_detail_user_rel')
-					.where({
-						project_id: data.project_id,
-						user_id: data.operator_id,
-						has_invite_permission: true
-					})
-					.get();
-
-				if (!operatorCheck.affectedDocs) {
-					return {
-						status: 0,
-						msg: "权限不足，您没有管理成员的权限"
-					};
-				}
-			}
-
-			// 2. 检查目标成员是否存在于项目中
-			const memberCheck = await db.collection('xm-stp-project_detail_user_rel')
-				.where({
-					project_id: data.project_id,
-					user_id: data.user_id
-				})
-				.get();
-
-			// 成员存在时的操作
-			if (memberCheck.affectedDocs > 0) {
-				const member = memberCheck.data[0];
-
-				// 3. 确认成员不是创建者或指导老师（这些角色不能被修改）
-				if (member.project_position === 0 || member.project_position === 1) {
-					return {
-						status: 0,
-						msg: "无法修改创建者或指导老师的状态"
-					};
-				}
-
-				// 4. 执行操作
-				switch (data.action) {
-					case 'add_invite_permission':
-						// 只有项目创建者可以授予邀请权限
-						if (!isCreator) {
-							return {
-								status: 0,
-								msg: "只有项目创建者可以设置邀请权限"
-							};
-						}
-
-						// 使用已初始化的db对象更新成员状态
-						const invite_updateResult = await db.collection('xm-stp-project_detail_user_rel')
-							.where({
-								project_id: data.project_id,
-								user_id: data.user_id
-							})
-							.update({
-								has_invite_permission: true
-							});
-
-						console.log(`已将用户 ${data.user_id} 在项目 ${data.project_id} 中设置为邀请者，结果:`, invite_updateResult);
-
-						// 发送项目通知
-						try {
-							// 先获取项目名称
-							const projectInfo = await db.collection('xm-stp-project_detail')
-								.doc(data.project_id)
-								.field('title')
-								.get();
-
-							const projectTitle = projectInfo.data && projectInfo.data.length > 0 ?
-								projectInfo.data[0].title : '未知项目';
-
-							// 使用second()函数获取秒级时间戳，符合timestamp类型要求
-							const timestamp = second();
-
-							// 准备通知数据
-							const notificationData = {
-								user_id: data.user_id,
-								project_id: data.project_id,
-								title: '获得项目邀请权限',
-								content: `您在项目「${projectTitle}」中获得了邀请权限，现在可以邀请其他用户加入此项目。`,
-								type: 'invite_permission',
-								status: 0, // 0表示未读
-								action_data: {
-									action: 'add_permission',
-									operator_id: data.operator_id,
-									icon: '/static/project_action/member_right.svg'
-								},
-								create_time: timestamp
-							};
-
-							console.log('准备添加通知:', JSON.stringify(notificationData));
-
-							// 直接添加到通知表 - 使用 db 而不是创建新的 database 实例
-							console.log('尝试向 xm-stp-project-notification 表添加通知');
-							const result = await db.collection('xm-stp-project-notification').add(notificationData);
-							console.log('通知添加结果:', JSON.stringify(result));
-
-							// 如果添加失败，尝试使用备用方法
-							if (!result || !result.id) {
-								console.log('尝试使用备用方法发送通知');
-								const backupResult = await sendProjectNotification(
-									data.user_id,
-									data.project_id,
-									'获得项目邀请权限',
-									`您在项目「${projectTitle}」中获得了邀请权限，现在可以邀请其他用户加入此项目。`,
-									'invite_permission',
-									{
-										action: 'add_permission',
-										operator_id: data.operator_id,
-										icon: '/static/project_action/member_right.svg'
-									}
-								);
-								console.log('备用方法发送通知结果:', backupResult);
-							}
-
-							console.log(`成功发送邀请权限通知: 用户 ${data.user_id} 获得邀请权限`);
-						} catch (notifyError) {
-							console.error('发送邀请权限通知失败:', notifyError);
-							console.error('错误详情:', notifyError.message);
-							console.error('错误堆栈:', notifyError.stack);
-						}
-
-						return {
-							status: 1,
-							msg: "已授予该成员邀请权限"
-						};
-
-					case 'remove_invite_permission':
-						// 只有项目创建者可以移除邀请权限
-						if (!isCreator) {
-							return {
-								status: 0,
-								msg: "只有项目创建者可以设置邀请权限"
-							};
-						}
-
-						// 使用已初始化的db对象更新成员状态
-						const remove_invite_updateResult = await db.collection('xm-stp-project_detail_user_rel')
-							.where({
-								project_id: data.project_id,
-									user_id: data.user_id
-							})
-							.update({
-								has_invite_permission: false
-							});
-
-						console.log(`已将用户 ${data.user_id} 在项目 ${data.project_id} 中移除邀请者权限，结果:`, remove_invite_updateResult);
-
-						// 尝试发送通知
-						try {
-							// 先获取项目名称
-							const projectInfo = await db.collection('xm-stp-project_detail')
-								.doc(data.project_id)
-								.field('title')
-								.get();
-
-							const projectTitle = projectInfo.data && projectInfo.data.length > 0 ?
-								projectInfo.data[0].title : '未知项目';
-
-							// 使用second()函数获取秒级时间戳，符合timestamp类型要求
-							const timestamp = second();
-
-							// 准备通知数据
-							const notificationData = {
-								user_id: data.user_id,
-								project_id: data.project_id,
-								title: '项目邀请权限移除',
-								content: `您在项目「${projectTitle}」中的邀请权限已被移除。`,
-								type: 'invite_permission',
-								status: 0, // 0表示未读
-								action_data: {
-									action: 'remove_permission',
-									operator_id: data.operator_id,
-									icon: '/static/project_action/member_remove.svg'
-								},
-								create_time: timestamp
-							};
-
-							console.log('准备添加通知:', JSON.stringify(notificationData));
-
-							// 直接添加到通知表 - 使用 db 而不是创建新的 database 实例
-							console.log('尝试向 xm-stp-project-notification 表添加通知');
-							const result = await db.collection('xm-stp-project-notification').add(notificationData);
-							console.log('通知添加结果:', JSON.stringify(result));
-
-							// 如果添加失败，尝试使用备用方法
-							if (!result || !result.id) {
-								console.log('尝试使用备用方法发送通知');
-								const backupResult = await sendProjectNotification(
-									data.user_id,
-									data.project_id,
-									'项目邀请权限移除',
-									`您在项目「${projectTitle}」中的邀请权限已被移除。`,
-									'invite_permission',
-									{
-										action: 'remove_permission',
-										operator_id: data.operator_id,
-										icon: '/static/project_action/member_remove.svg'
-									}
-								);
-								console.log('备用方法发送通知结果:', backupResult);
-							}
-
-							console.log(`成功发送邀请权限移除通知: 用户 ${data.user_id}`);
-						} catch (notifyError) {
-							console.error('发送邀请权限移除通知失败:', notifyError);
-							console.error('错误详情:', notifyError.message);
-							console.error('错误堆栈:', notifyError.stack);
-							// 通知失败不影响主流程
-						}
-
-						return {
-							status: 1,
-							msg: "已移除该成员的邀请权限"
-						};
-
-					case 'move_to_pending':
-						// 正式成员移到待定区
-						if (member.project_position === 2) { // 确保是正式成员
-							// 检查用户是否有邀请权限
-							const hasInvitePermission = member.has_invite_permission === true;
-
-							// 使用已初始化的db对象更新成员状态，同时移除邀请权限
-							await db.collection('xm-stp-project_detail_user_rel')
-								.where({
-									project_id: data.project_id,
-									user_id: data.user_id
-								})
-								.update({
-									project_position: 3, // 待定成员
-									has_invite_permission: false // 移除邀请权限
-								});
-
-							console.log(`已将用户 ${data.user_id} 在项目 ${data.project_id} 中的状态更新为待定成员，并移除邀请权限`);
-
-							// 发送项目通知
-							try {
-								// 先获取项目名称
-								const projectInfo = await db.collection('xm-stp-project_detail')
-									.doc(data.project_id)
-									.field('title')
-									.get();
-
-								const projectTitle = projectInfo.data && projectInfo.data.length > 0 ?
-									projectInfo.data[0].title : '未知项目';
-
-								// 使用second()函数获取秒级时间戳
-								const timestamp = second();
-
-								// 根据用户是否有邀请权限，准备不同的通知内容
-								let notificationContent = `您在项目「${projectTitle}」中的状态已更新：您已从正式成员调整为待定成员。`;
-
-								// 如果用户之前有邀请权限，添加权限已被移除的信息
-								if (hasInvitePermission) {
-									notificationContent += `同时，您的邀请权限也已被移除。`;
-								}
-
-								// 准备通知数据
-								const notificationData = {
-									user_id: data.user_id,
-									project_id: data.project_id,
-									title: '项目成员状态更新',
-									content: notificationContent,
-									type: 'member_status',
-									status: 0, // 0表示未读
-									action_data: {
-										from: 'confirmed',
-										to: 'pending',
-										operator_id: data.operator_id,
-										invite_permission_removed: hasInvitePermission
-									},
-									create_time: timestamp
-								};
-
-								// 直接添加到通知表
-								console.log('尝试向 xm-stp-project-notification 表添加通知');
-								const result = await db.collection('xm-stp-project-notification').add(notificationData);
-								console.log('通知添加结果:', JSON.stringify(result));
-
-								console.log(`成功发送状态更新通知: 用户 ${data.user_id} 被移至待定区${hasInvitePermission ? '并移除邀请权限' : ''}`);
-							} catch (notifyError) {
-								console.error('发送状态更新通知失败:', notifyError);
-								console.error('错误详情:', notifyError.message);
-								console.error('错误堆栈:', notifyError.stack);
-							}
-
-							return {
-								status: 1,
-								msg: "已将成员移至待定区" + (hasInvitePermission ? "并移除邀请权限" : "")
-							};
-						} else {
-							return {
-								status: 0,
-								msg: "该成员已经是待定成员"
-							};
-						}
-
-					case 'move_to_confirmed':
-						// 待定成员升级为正式成员
-						if (member.project_position === 3) { // 确保是待定成员
-							// The code here
-							// 使用已初始化的db对象更新成员状态
-							await db.collection('xm-stp-project_detail_user_rel')
-								.where({
-									project_id: data.project_id,
-									user_id: data.user_id
-								})
-								.update({
-									project_position: 2 // 正式成员
-								});
-
-							console.log(`已将用户 ${data.user_id} 在项目 ${data.project_id} 中的状态更新为正式成员`);
-
-							// 发送项目通知
-							try {
-								// 先获取项目名称
-								const projectInfo = await db.collection('xm-stp-project_detail')
-									.doc(data.project_id)
-									.field('title')
-									.get();
-
-								const projectTitle = projectInfo.data && projectInfo.data.length > 0 ?
-									projectInfo.data[0].title : '未知项目';
-
-								// 直接使用本地函数发送通知
-								const notifyResult = await sendNotificationToUser(
-									data.user_id,
-									data.project_id,
-									'项目成员状态更新',
-									`您在项目「${projectTitle}」中的状态已更新：您已从待定成员升级为正式成员！`,
-									'member_status',
-									{
-										from: 'pending',
-										to: 'confirmed',
-										operator_id: data.operator_id
-									}
-								);
-
-								// 如果使用 sendNotificationToUser 失败，尝试使用 sendProjectNotification
-								if (!notifyResult || !notifyResult.status) {
-									console.log('尝试使用备用方法发送通知');
-									const backupResult = await sendProjectNotification(
-										data.user_id,
-										data.project_id,
-										'项目成员状态更新',
-										`您在项目「${projectTitle}」中的状态已更新：您已从待定成员升级为正式成员！`,
-										'member_status',
-										{
-											from: 'pending',
-											to: 'confirmed',
-											operator_id: data.operator_id
-										}
-									);
-									console.log('备用方法发送通知结果:', backupResult);
-								}
-
-								console.log(`成功发送状态更新通知: 用户 ${data.user_id} 升级为正式成员`);
-							} catch (notifyError) {
-								console.error('发送状态更新通知失败（升级为正式成员）:', notifyError);
-							}
-
-							return {
-								status: 1,
-								msg: "已将成员设为正式成员"
-							};
-						} else {
-							return {
-								status: 0,
-								msg: "该成员已经是正式成员"
-							};
-						}
-
-					case 'remove_member':
-						// 移除成员 (从项目中完全删除)
-						await db.collection('xm-stp-project_detail_user_rel')
-							.where({
-								project_id: data.project_id,
-								user_id: data.user_id
-							})
-							.remove();
-
-						// 发送项目通知
-						try {
-							// 先获取项目名称
-							const projectInfo = await db.collection('xm-stp-project_detail')
-								.doc(data.project_id)
-								.field('title')
-								.get();
-
-							const projectTitle = projectInfo.data && projectInfo.data.length > 0 ?
-								projectInfo.data[0].title : '未知项目';
-
-							// 如果找到成员，尝试发送通知
-							try {
-								// 获取项目信息
-								const projectInfo = await db.collection('xm-stp-project_detail')
-									.doc(data.project_id)
-									.field('title')
-									.get();
-
-								const projectTitle = projectInfo.data && projectInfo.data.length > 0 ?
-									projectInfo.data[0].title : '未知项目';
-
-								// 添加通知
-								await db.collection('xm-stp-project-notification').add({
-									user_id: data.user_id,
-									project_id: data.project_id,
-									title: '项目成员移除通知',
-									content: `您已被移出项目「${projectTitle}」。`,
-									type: 'removed',
-									status: 0, // 0表示未读
-									action_data: {
-										operator_id: data.operator_id
-									},
-									create_time: second()
-								});
-							} catch (notifyError) {
-								console.error('发送项目成员移除通知失败:', notifyError);
-								// 不影响主流程，失败不返回错误
-							}
-
-							console.log(`成功发送移除通知: 用户 ${data.user_id} 被移出项目`);
-						} catch (notifyError) {
-							console.error('发送移除通知失败:', notifyError);
-						}
-
-						// 更新项目成员数量 - 无论成员类型都减少计数
-						try {
-							// 直接获取项目详情并更新成员数
-							const projectDetail = await db.collection('xm-stp-project_detail')
-								.doc(data.project_id)
-								.field('current_members,user_id')
-								.get();
-
-							if (projectDetail.data && projectDetail.data.length > 0) {
-								// 确保current_members字段存在
-								let currentMembers = projectDetail.data[0].current_members;
-
-								// 如果current_members为undefined或null，设为0
-								if (currentMembers === undefined || currentMembers === null) {
-									currentMembers = 0;
-								} else if (typeof currentMembers === 'string') {
-									// 如果是字符串，转换为数字
-									currentMembers = parseInt(currentMembers) || 0;
-								}
-
-								// 只有当成员数大于0时才减少
-								if (currentMembers > 0) {
-									await db.collection('xm-stp-project_detail')
-										.doc(data.project_id)
-										.update({
-											current_members: currentMembers - 1
-										});
-									console.log(`项目 ${data.project_id} 的成员数量已从 ${currentMembers} 更新为 ${currentMembers - 1}`);
-								} else {
-									console.warn(`项目 ${data.project_id} 的成员数量为 ${currentMembers}，已经是0或负数，无需减少`);
-								}
-							} else {
-								console.error(`找不到项目 ${data.project_id} 的详细信息`);
-							}
-						} catch (error) {
-							console.error('更新成员数量失败:', error);
-						}
-
-						return {
-							status: 1,
-							msg: "已移除该成员"
-						};
-
-					default:
-						return {
-							status: 0,
-							msg: "未知的操作类型"
-						};
-				}
-			} else {
-				// 成员不存在，无法执行操作
-				return {
-					status: 0,
-					msg: "该用户不是项目成员"
-				};
-			}
+			console.log('ProjectAction.getProjectImages 代理调用 ProjectAsset.getProjectImages');
+			const projectAsset = uniCloud.importObject('ProjectAsset');
+			const result = await projectAsset.getProjectImages(params);
+			return result;
 		} catch (error) {
-			console.error('成员管理操作失败:', error);
+			console.error('代理调用ProjectAsset.getProjectImages失败:', error);
 			return {
 				status: 0,
-				msg: "操作失败: " + error.message
-			};
-		}
-	},
-	// 获取用户的项目通知
-	async getProjectNotifications(data) {
-		try {
-			// 设置管理员权限，允许访问数据库
-			const dbForJQL = uniCloud.databaseForJQL();
-			dbForJQL.setUser({
-				role: ['admin']
-			});
-
-			if (!data.user_id) {
-				return {
-					status: 0,
-					msg: "参数不完整，请提供用户ID"
-				};
-			}
-
-			// 从xm-stp-project-notification表获取用户通知
-			console.log('尝试从 xm-stp-project-notification 表获取用户通知');
-			const notificationsRes = await dbForJQL.collection('xm-stp-project-notification')
-				.where({
-					user_id: data.user_id
-				})
-				.orderBy('create_time', 'desc')
-				.limit(50)
-				.get();
-
-			return {
-				status: 1,
-				msg: "获取项目通知成功",
-				data: notificationsRes.data
-			};
-		} catch (error) {
-			console.error('获取项目通知失败:', error);
-			return {
-				status: 0,
-				msg: "获取项目通知失败: " + error.message
-			};
-		}
-	},
-
-	// 标记单个通知为已读
-	async markNotificationRead(data) { // 使用 'data' 作为接收到的参数
-		try {
-			console.log('markNotificationRead received raw argument:', JSON.stringify(data)); // 记录原始参数
-
-			// 设置管理员权限，允许访问数据库
-			const dbForJQL = uniCloud.databaseForJQL();
-			dbForJQL.setUser({ role: ['admin'] });
-
-			// --- 健壮地提取参数 ---
-			let notificationId, userId;
-
-			// 直接从参数中提取
-			if (data && data.notification_id) {
-				console.log('Accessing params directly from data');
-				notificationId = data.notification_id;
-				userId = data.user_id;
-			}
-			// 尝试从data.data中提取 (兼容旧的调用方式)
-			else if (data && data.data && data.data.notification_id) {
-				console.log('Accessing params via data.data');
-				notificationId = data.data.notification_id;
-				userId = data.data.user_id;
-			}
-			// 如果前两种方法都失败，再尝试其他可能的结构
-			else {
-				console.error('Failed to extract parameters from data:', JSON.stringify(data));
-				return { status: 0, msg: "内部错误：参数解析失败" };
-			}
-
-			if (!notificationId || !userId) {
-				console.error('Validation failed: notificationId or userId is missing after extraction.');
-				return { status: 0, msg: "参数不完整，请提供通知ID和用户ID" };
-			}
-			console.log(`Processing markNotificationRead for notification_id: ${notificationId}, user_id: ${userId}`);
-
-			// 验证通知所属用户
-			console.log('尝试验证 xm-stp-project-notification 表中的通知');
-			const checkRes = await dbForJQL.collection('xm-stp-project-notification')
-				.where({
-					_id: notificationId, // 使用提取的变量
-					user_id: userId      // 使用提取的变量
-				})
-				.count();
-
-			if (checkRes.total === 0) {
-				console.log('Validation failed: Notification not found or user mismatch.');
-				return { status: 0, msg: "通知不存在或无权操作" };
-			}
-
-			// 更新通知状态为已读
-			console.log(`尝试更新 xm-stp-project-notification 表中的通知 ${notificationId} 状态为已读`);
-			const updateRes = await dbForJQL.collection('xm-stp-project-notification')
-				.doc(notificationId) // 使用提取的变量
-				.update({
-					status: 1, // 1表示已读
-					read_time: Date.now() // 使用时间戳
-				});
-
-			console.log('Update result:', JSON.stringify(updateRes));
-
-			if (updateRes.updated > 0) {
-				console.log('Update successful.');
-				return { status: 1, msg: "标记通知已读成功" };
-			} else {
-				console.warn('Update failed: No documents matched or status already updated.');
-				return { status: 0, msg: "标记通知已读失败（可能已是已读状态）" };
-			}
-		} catch (error) {
-			console.error('标记通知已读失败 (catch block):', error);
-			return { status: 0, msg: "标记通知已读失败: " + error.message };
-		}
-	},
-
-	// 批量标记通知为已读
-	async markAllNotificationsRead(data) { // 使用 'data' 作为接收到的参数
-		try {
-			console.log('markAllNotificationsRead received raw argument:', JSON.stringify(data)); // 记录原始参数
-
-			// 设置管理员权限，允许访问数据库
-			const dbForJQL = uniCloud.databaseForJQL();
-			dbForJQL.setUser({ role: ['admin'] });
-
-			// --- 健壮地提取参数 ---
-			let notificationIds, userId;
-
-			// 直接从参数中提取
-			if (data && data.notification_ids && Array.isArray(data.notification_ids)) {
-				console.log('Accessing params directly from data');
-				notificationIds = data.notification_ids;
-				userId = data.user_id;
-			}
-			// 尝试从data.data中提取 (兼容旧的调用方式)
-			else if (data && data.data && data.data.notification_ids && Array.isArray(data.data.notification_ids)) {
-				console.log('Accessing params via data.data');
-				notificationIds = data.data.notification_ids;
-				userId = data.data.user_id;
-			}
-			// 如果前两种方法都失败，再尝试其他可能的结构
-			else {
-				console.error('Failed to extract parameters from data:', JSON.stringify(data));
-				return { status: 0, msg: "内部错误：参数解析失败" };
-			}
-
-			if (!notificationIds || notificationIds.length === 0 || !userId) {
-				console.error('Validation failed: notificationIds or userId is missing/empty after extraction.');
-				return { status: 0, msg: "参数不完整，请提供通知ID列表和用户ID" };
-			}
-			console.log(`Processing markAllNotificationsRead for ${notificationIds.length} notifications, user_id: ${userId}`);
-
-			// 更新通知状态为已读
-			console.log(`尝试更新 xm-stp-project-notification 表中的 ${notificationIds.length} 条通知状态为已读`);
-			const updateRes = await dbForJQL.collection('xm-stp-project-notification')
-				.where({
-					_id: dbForJQL.command.in(notificationIds), // 使用提取的变量
-					user_id: userId                           // 使用提取的变量
-				})
-				.update({
-					status: 1, // 1表示已读
-					read_time: Date.now() // 使用时间戳
-				});
-
-			console.log('Bulk update result:', JSON.stringify(updateRes));
-
-			if (updateRes.updated > 0) {
-				console.log(`Bulk update successful, updated ${updateRes.updated} notifications.`);
-				return { status: 1, msg: "全部标记已读成功", updated: updateRes.updated };
-			} else {
-				console.warn('Bulk update failed: No documents matched or statuses already updated.');
-				return { status: 0, msg: "标记已读失败或无需更新" };
-			}
-		} catch (error) {
-			console.error('批量标记通知已读失败 (catch block):', error);
-			return { status: 0, msg: "批量标记通知已读失败: " + error.message };
-		}
-	},
-	// 获取用户未读通知数量
-	async getUnreadNotificationCount(data) {
-		try {
-			// 设置管理员权限，允许访问数据库
-			const dbForJQL = uniCloud.databaseForJQL();
-			dbForJQL.setUser({
-				role: ['admin']
-			});
-
-			if (!data.user_id) {
-				return {
-					status: 0,
-					msg: "参数不完整，请提供用户ID",
-					count: 0
-				};
-			}
-
-			// 从xm-stp-project-notification表获取未读通知数量
-			console.log('尝试从 xm-stp-project-notification 表获取用户未读通知数量');
-			const countRes = await dbForJQL.collection('xm-stp-project-notification')
-				.where({
-					user_id: data.user_id,
-					status: 0 // 0表示未读
-				})
-				.count();
-
-			return {
-				status: 1,
-				msg: "获取未读通知数量成功",
-				count: countRes.total || 0
-			};
-		} catch (error) {
-			console.error('获取未读通知数量失败:', error);
-			return {
-				status: 0,
-				msg: "获取未读通知数量失败: " + error.message,
-				count: 0
+				msg: "获取项目图片失败: " + error.message,
+				data: []
 			};
 		}
 	},
@@ -2780,187 +1384,7 @@ module.exports = {
 		}
 	},
 
-	// 获取项目图片的临时访问链接
-	async getProjectImages(params) {
-		try {
-			// 设置管理员权限，允许访问数据库
-			const dbForJQL = uniCloud.databaseForJQL();
-			dbForJQL.setUser({
-				role: ['admin']
-			});
 
-			console.log('获取项目图片参数:', params);
-
-			// 如果提供了临时文件ID列表，直接获取这些文件的临时链接
-			if (params.temp_file_ids && params.temp_file_ids.length > 0) {
-				console.log('使用临时文件ID列表获取临时链接:', params.temp_file_ids);
-
-				try {
-					// 获取临时访问链接
-					const tempUrlResult = await uniCloud.getTempFileURL({
-						fileList: params.temp_file_ids.map(fileID => ({ fileID }))
-					});
-
-					console.log('获取临时链接结果:', tempUrlResult);
-
-					// 处理结果
-					const imageResults = [];
-					if (tempUrlResult.fileList && tempUrlResult.fileList.length > 0) {
-						tempUrlResult.fileList.forEach(item => {
-							if (item.tempFileURL) {
-								// 确保返回的是字符串而不是对象
-								const tempFileURL = typeof item.tempFileURL === 'string' ?
-									item.tempFileURL : item.tempFileURL.toString();
-								imageResults.push({
-									fileID: item.fileID,
-									tempFileURL: tempFileURL
-								});
-							}
-						});
-					}
-
-					return {
-						status: 1,
-						msg: "获取临时链接成功",
-						data: imageResults
-					};
-				} catch (error) {
-					console.error('获取临时链接失败:', error);
-					return {
-						status: 0,
-						msg: "获取临时链接失败: " + error.message,
-						data: []
-					};
-				}
-			}
-
-			// 如果没有提供临时文件ID列表，则检查是否提供了项目ID
-			if (!params.project_id) {
-				return {
-					status: 0,
-					msg: "参数不完整，请提供项目ID或文件ID列表",
-					data: []
-				};
-			}
-
-			console.log(`获取项目 ${params.project_id} 的图片`);
-
-			// 如果没有提供临时文件ID，则从项目详情中获取图片
-			const projectDetail = await dbForJQL.collection('xm-stp-project_detail')
-				.doc(params.project_id)
-				.get();
-
-			if (!projectDetail.data || projectDetail.data.length === 0) {
-				// 如果是临时项目，则返回空数组
-				if (params.project_id === 'temp') {
-					return {
-						status: 1,
-						msg: "临时项目没有图片",
-						data: []
-					};
-				}
-
-				return {
-					status: 0,
-					msg: "项目不存在",
-					data: []
-				};
-			}
-
-			// 获取图片数组
-			const images = projectDetail.data[0].images || [];
-
-			if (images.length === 0) {
-				return {
-					status: 1,
-					msg: "项目没有图片",
-					data: []
-				};
-			}
-
-			// 检查图片数组中的第一个元素是否为直接的URL字符串
-			const firstImage = images[0];
-			const isDirectUrl = typeof firstImage === 'string' &&
-				(firstImage.startsWith('http://') || firstImage.startsWith('https://'));
-
-			console.log('检查图片类型:', {
-				firstImage,
-				isDirectUrl,
-				imagesType: typeof firstImage
-			});
-
-			// 如果是直接的URL字符串，直接返回
-			if (isDirectUrl) {
-				console.log('图片是直接的URL字符串，直接返回');
-
-				// 将直接的URL字符串转换为需要的格式
-				const imageResults = images.map(url => ({
-					fileID: url, // 使用URL作为fileID
-					tempFileURL: url // 直接使用URL作为tempFileURL
-				}));
-
-				return {
-					status: 1,
-					msg: "获取项目图片成功",
-					data: imageResults
-				};
-			}
-
-			// 如果不是直接的URL，则假设是fileID，获取临时访问链接
-			try {
-				console.log('尝试将图片当作fileID处理');
-				const tempUrlResult = await uniCloud.getTempFileURL({
-					fileList: images.map(fileID => ({ fileID }))
-				});
-
-				console.log('获取临时链接结果:', tempUrlResult);
-
-				// 处理结果
-				const imageResults = [];
-				if (tempUrlResult.fileList && tempUrlResult.fileList.length > 0) {
-					tempUrlResult.fileList.forEach(item => {
-						if (item.tempFileURL) {
-							// 确保返回的是字符串而不是对象
-							const tempFileURL = typeof item.tempFileURL === 'string' ?
-								item.tempFileURL : item.tempFileURL.toString();
-							imageResults.push({
-								fileID: item.fileID,
-								tempFileURL: tempFileURL
-							});
-						}
-					});
-				}
-
-				return {
-					status: 1,
-					msg: "获取项目图片成功",
-					data: imageResults
-				};
-			} catch (error) {
-				console.error('获取临时链接失败:', error);
-
-				// 如果获取临时链接失败，尝试直接返回原始图片数组
-				console.log('尝试直接返回原始图片数组');
-				const imageResults = images.map(img => ({
-					fileID: img,
-					tempFileURL: img
-				}));
-
-				return {
-					status: 1,
-					msg: "获取项目图片成功（直接返回原始图片）",
-					data: imageResults
-				};
-			}
-		} catch (error) {
-			console.error('获取项目图片失败:', error);
-			return {
-				status: 0,
-				msg: "获取项目图片失败: " + error.message,
-				data: []
-			};
-		}
-	},
 
 	// 删除项目图片
 	async deleteProjectImage(data) {
@@ -3519,117 +1943,5 @@ module.exports = {
 		}
 	},
 
-	// 获取用户收藏的项目列表
-	async getFavoriteProjects(data) {
-		try {
-			// 设置管理员权限，允许访问数据库
-			const dbForJQL = uniCloud.databaseForJQL();
-			dbForJQL.setUser({
-				role: ['admin']
-			});
 
-			if (!data.user_id) {
-				return {
-					status: 0,
-					msg: "参数不完整，请提供用户ID"
-				};
-			}
-
-			console.log(`获取用户 ${data.user_id} 收藏的项目列表`);
-
-			// 获取用户收藏的项目ID列表
-			const favorites = await dbForJQL.collection('xm-stp-project_favorite')
-				.where({
-					user_id: data.user_id
-				})
-				.orderBy('create_time', 'desc')
-				.get();
-
-			if (!favorites.data || favorites.data.length === 0) {
-				return {
-					status: 1,
-					msg: "暂无收藏项目",
-					data: []
-				};
-			}
-
-			// 收集项目IDs
-			const projectIds = favorites.data.map(f => f.project_id);
-
-			// 获取项目详情
-			const projects = await dbForJQL.collection('xm-stp-project_detail')
-				.where({
-					_id: dbForJQL.command.in(projectIds)
-				})
-				.field('_id,title,person_needed,current_members,current_person_request,user_id,create_time,images')
-				.get();
-
-			if (projects.affectedDocs === 0) {
-				return {
-					status: 1,
-					msg: "暂无项目详情",
-					data: []
-				};
-			}
-
-			// 获取项目的额外信息
-			const projectsExtra = await dbForJQL.collection('xm-stp-project')
-				.where({
-					_id: dbForJQL.command.in(projectIds)
-				})
-				.field('_id,type_id,ending_time,view_count')
-				.get();
-
-			// 获取项目类型信息
-			const typeIds = projectsExtra.data.map(p => p.type_id).filter(Boolean);
-			const projectTypes = await dbForJQL.collection('xm-stp-project_cat')
-				.where({
-					_id: dbForJQL.command.in([...new Set(typeIds)])
-				})
-				.field('_id,name')
-				.get();
-
-			// 获取项目创建者信息
-			const creatorIds = projects.data.map(p => p.user_id).filter(Boolean);
-			const creators = await dbForJQL.collection('xm-stp-user_detail')
-				.where({
-					_id: dbForJQL.command.in([...new Set(creatorIds)])
-				})
-				.field('_id,real_name,avatar,type')
-				.get();
-
-			// 合并项目数据
-			const mergedProjects = projects.data.map(project => {
-				const extraInfo = projectsExtra.data.find(p => p._id === project._id) || {};
-				const typeInfo = extraInfo.type_id ?
-					projectTypes.data.find(t => t._id === extraInfo.type_id) : null;
-				const creatorInfo = creators.data.find(c => c._id === project.user_id) || {};
-				const favoriteInfo = favorites.data.find(f => f.project_id === project._id) || {};
-
-				return {
-					...project,
-					ending_time: extraInfo.ending_time,
-					view_count: extraInfo.view_count || 0,
-					project_cat: typeInfo ? { id: typeInfo._id, name: typeInfo.name } : null,
-					creator_name: creatorInfo.real_name || '',
-					creator_avatar: creatorInfo.avatar || '',
-					creator_type: creatorInfo.type,
-					favorite_time: favoriteInfo.create_time
-				};
-			});
-
-			return {
-				status: 1,
-				msg: "获取成功",
-				data: mergedProjects
-			};
-		} catch (error) {
-			console.error('获取收藏项目列表失败:', error);
-			return {
-				status: 0,
-				msg: "获取收藏项目列表失败: " + error.message,
-				data: []
-			};
-		}
-	}
 }

@@ -1,5 +1,5 @@
 <template>
-  <view class="custom-tab-bar">
+  <view class="my-tab-bar">
     <view
       v-for="(item, index) in tabList"
       :key="index"
@@ -69,7 +69,7 @@ export default {
 </script>
 
 <style>
-.custom-tab-bar {
+.my-tab-bar {
   position: fixed;
   bottom: 0;
   left: 0;
@@ -114,4 +114,4 @@ export default {
   color: #07c160;
   font-weight: bold;
 }
-</style> 
+</style>

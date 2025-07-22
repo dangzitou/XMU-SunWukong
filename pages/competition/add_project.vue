@@ -62,10 +62,10 @@
 				showEnding_date: false,
 				ending_date: '',
 				statusDatas: [
-					{ value: '0', label: '草稿箱', checked: true },
-					{ value: '1', label: '发布', checked: false }
+					{ value: '0', label: '草稿箱', checked: false },
+					{ value: '1', label: '发布', checked: true }
 				],
-				status: '0',
+				status: '1',
 				detail: ''
 			};
 		},

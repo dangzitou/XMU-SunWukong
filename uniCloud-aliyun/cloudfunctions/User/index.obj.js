@@ -171,13 +171,27 @@ module.exports = {
 		}
 	},
 	async getList(data){
-		var condition = data.type == '学生' ? 'type != 0' : 'type == 0'
+		// 构建查询条件对象
+		let whereCondition = {};
 
-		if(data.user_id) condition += ` && _id != '${data.user_id}'`
+		// 用户类型条件
+		if (data.type == '学生') {
+			whereCondition.type = dbCmd.neq(0);
+		} else {
+			whereCondition.type = dbCmd.eq(0);
+		}
 
-		if(data.real_name) condition += ` && real_name == '${data.real_name}'`
+		// 排除当前用户
+		if(data.user_id) {
+			whereCondition._id = dbCmd.neq(data.user_id);
+		}
 
-		const res = await db.collection('xm-stp-user_detail,xm-stp-college_cat,xm-stp-specific_cat').where(condition).get()
+		// 姓名模糊搜索
+		if(data.real_name) {
+			whereCondition.real_name = new RegExp(data.real_name, 'i');
+		}
+
+		const res = await db.collection('xm-stp-user_detail,xm-stp-college_cat,xm-stp-specific_cat').where(whereCondition).get()
 
 
 		if(!res.affectedDocs) return {
@@ -341,7 +355,7 @@ module.exports = {
 			user_id:data.user_id,
 			status:1
 		})
-		.field('type_id')
+		.field('type_id,ending_time')
 		.get()
 
 		if(!projs.affectedDocs) return {
@@ -361,13 +375,14 @@ module.exports = {
 		.where({
 			_id:dbCmd.in(projList)
 		})
-		.field('title,person_needed,current_members,current_person_request,create_time,description,content_text').get()
+		.field('title,person_needed,current_members,current_person_request,create_time,description,content_text,view_count').get()
 
 
 		for(const i1 in detailList.data){
 			for(const i2 in projs.data){
 				if(detailList.data[i1]._id == projs.data[i2]._id){
 					detailList.data[i1].type = projs.data[i2].type_id[0].name
+					detailList.data[i1].ending_time = projs.data[i2].ending_time
 					break
 				}
 			}

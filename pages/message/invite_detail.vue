@@ -1,5 +1,9 @@
 <template>
 	<view class="container">
+		<!-- 返回按钮 -->
+		<view class="back-button" @tap="goBack">
+			<text class="diygw-icon diy-icon-left"></text>
+		</view>
 
 		<!-- 切换导航 -->
 		<view class="switch-nav">
@@ -210,6 +214,13 @@
 			this.init();
 		},
 		methods: {
+			// 返回上一页
+			goBack() {
+				uni.navigateBack({
+					delta: 1
+				});
+			},
+
 			async init() {
 				await this.checkLoginState();
 
@@ -312,27 +323,20 @@
 					if (res && res.data) {
 						// 确保邀请列表存在
 						const inviteList = res.data.received_invites || res.data.invite_list || [];
-						console.log('收到的邀请列表原始数据:', inviteList);
+						// 新增：打印所有原始数据，便于调试
+						console.log('收到的邀请列表原始数据(含status):', JSON.stringify(inviteList));
 
-						// 处理数据，确保字段名称一致
+						// 不做任何status过滤，全部显示
 						this.globalData.invite_list = inviteList.map(item => {
-							// 记录原始数据
-							console.log('处理邀请项目:', JSON.stringify(item));
-
-							// 确保所有必要字段存在
 							return {
 								...item,
-								// 确保项目ID字段存在
 								project_id: item.project_id,
-								// 保留原始的创建者信息字段
 								owner_name: item.owner_name || '',
 								owner_avatar: item.owner_avatar || '',
 								creator_name: item.creator_name || item.owner_name || '项目创建者',
 								creator_avatar: item.creator_avatar || item.owner_avatar || '/static/team-1.jpg',
-								// 确保项目人数字段存在
 								current_members: item.current_members || 0,
 								person_needed: item.person_needed || item.need_person || 0,
-								// 确保其他必要字段存在
 								status: item.status !== undefined ? item.status : 0,
 								title: item.title || '未知项目',
 								comment: item.comment || ''
@@ -340,7 +344,10 @@
 						});
 
 						console.log('已更新邀请列表，数量:', this.globalData.invite_list.length);
-						console.log('处理后的第一条邀请:', this.globalData.invite_list[0]);
+						if (this.globalData.invite_list.length > 0) {
+							// 新增：打印所有status，便于调试
+							console.log('所有邀请的status:', this.globalData.invite_list.map(i => i.status));
+						}
 					}
 				} catch (error) {
 					console.error('加载邀请列表失败', error);
@@ -354,132 +361,41 @@
 			// 加载我发出的邀请列表
 			async loadSentInviteList() {
 				try {
-					console.log('加载我发出的邀请列表');
+					console.log('通过云函数加载我发出的邀请列表');
 					this.inviteLoading = true;
-
-					const myUser = this.$session.getUserValue('user_id');
-					console.log('当前用户ID:', myUser);
-
-					// 使用数据库直接查询方式
-					const db = uniCloud.database();
-
-					// 1. 获取我创建的项目
-					const myProjectsRes = await db.collection('xm-stp-project')
-						.where({ user_id: myUser })
-						.field('_id')
-						.get();
-
-					const myProjects = myProjectsRes.result?.data || [];
-					if (!myProjects.length) {
-						console.log('未找到您创建的项目');
-						this.globalData.invite_list = [];
-						this.inviteLoading = false;
-						uni.hideLoading();
-						return;
-					}
-
-					const projectIds = myProjects.map(p => p._id);
-					console.log('您创建的项目IDs:', projectIds);
-
-					// 2. 获取项目详情
-					const projectDetailsRes = await db.collection('xm-stp-project_detail')
-						.where({
-							_id: db.command.in(projectIds)
-						})
-						.field('_id,title,user_id,current_members,person_needed,current_person_request')
-						.get();
-
-					const projectDetails = projectDetailsRes.result?.data || [];
-
-					// 3. 获取这些项目发出的邀请
-					const invitesRes = await db.collection('xm-stp-project_app_invite')
-						.where({
-							project_id: db.command.in(projectIds)
-						})
-						.field('_id,user_id,project_id,status,create_time,comment')
-						.orderBy('create_time', 'desc')
-						.get();
-
-					const invites = invitesRes.result?.data || [];
-					if (!invites.length) {
-						console.log('未找到邀请记录');
-						this.globalData.invite_list = [];
-						this.inviteLoading = false;
-						uni.hideLoading();
-						return;
-					}
-
-					console.log('找到邀请记录数量:', invites.length);
-
-					// 4. 获取被邀请用户的信息
-					const userIds = invites.map(invite => invite.user_id);
-					const usersRes = await db.collection('xm-stp-user_detail')
-						.where({
-							_id: db.command.in([...new Set(userIds)])
-						})
-						.field('_id,real_name,nickname,avatar,user_type')
-						.get();
-
-					const users = usersRes.result?.data || [];
-
-					// 5. 获取当前用户（邀请者）的信息
-					const myUserRes = await db.collection('xm-stp-user_detail')
-						.where({
-							_id: myUser
-						})
-						.field('_id,real_name,nickname,avatar,user_type')
-						.get();
-
-					const myUserInfo = myUserRes.result?.data?.[0] || {};
-
-					// 6. 合并数据
-					const inviteList = invites.map(invite => {
-						const project = projectDetails.find(p => p._id === invite.project_id) || {};
-						const applicant = users.find(u => u._id === invite.user_id) || {};
-
-						// 打印当前用户信息，用于调试
-						console.log('当前用户信息:', myUserInfo);
-
-						// 创建邀请对象
-						const inviteObj = {
-							_id: invite._id,
-							project_id: invite.project_id,
-							user_id: invite.user_id,
-							status: invite.status,
-							create_time: invite.create_time,
-							comment: invite.comment || '',
-							title: project.title || '未知项目',
-							// 项目人数信息
-							current_members: project.current_members || 0,
-							person_needed: project.person_needed || 0,
-							current_person_request: project.current_person_request || 0,
-							// 被邀请者信息
-							applicant_name: applicant.real_name || applicant.nickname || '被邀请者',
-							applicant_avatar: applicant.avatar || '/static/team-1.jpg',
-							applicant_type: applicant.user_type || '学生',
-							// 邀请者（当前用户）信息
-							creator_name: myUserInfo.real_name || myUserInfo.nickname || '项目创建者',
-							creator_avatar: myUserInfo.avatar || '/static/team-1.jpg',
-							owner_name: myUserInfo.real_name || myUserInfo.nickname || '项目创建者',
-							owner_avatar: myUserInfo.avatar || '/static/team-1.jpg'
-						};
-
-						// 打印创建的邀请对象，用于调试
-						console.log('创建的邀请对象:', inviteObj);
-
-						return inviteObj;
+					uni.showLoading({ title: '加载中...', mask: true });
+					// 通过云函数获取
+					const res = await uniCloud.importObject('ProjectAction').getListFromMsg({
+						user_id: this.$session.getUserValue('user_id')
 					});
-
-					this.globalData.invite_list = inviteList;
-					console.log('已更新我发出的邀请列表，数量:', inviteList.length);
-
-					// 如果有数据，打印第一条记录用于调试
-					if (this.globalData.invite_list.length > 0) {
-						console.log('第一条邀请记录:', this.globalData.invite_list[0]);
+					if (res && res.data && res.data.invite_others_list) {
+						// 适配前端数据结构
+						this.globalData.invite_list = res.data.invite_others_list.map(item => ({
+							...item,
+							project_id: item.project_id,
+							user_id: item.user_id,
+							status: item.status !== undefined ? item.status : 0,
+							title: item.title || '未知项目',
+							comment: item.comment || '',
+							applicant_name: item.name || '被邀请者',
+							applicant_avatar: item.avatar || '/static/team-1.jpg',
+							// 兼容原有字段
+							current_members: item.current_members || 0,
+							person_needed: item.person_needed || 0,
+							current_person_request: item.current_person_request || 0
+						}));
+						console.log('通过云函数已更新我发出的邀请列表，数量:', this.globalData.invite_list.length);
+						if (this.globalData.invite_list.length > 0) {
+							console.log('第一条邀请记录:', this.globalData.invite_list[0]);
+							console.log('所有邀请的status:', this.globalData.invite_list.map(i => i.status));
+						}
+					} else {
+						this.globalData.invite_list = [];
+						console.log('通过云函数未找到邀请记录');
 					}
 				} catch (error) {
-					console.error('加载我发出的邀请列表失败', error);
-					this.showToast('加载邀请列表失败');
+					console.error('通过云函数加载我发出的邀请列表失败', error, error && error.message, JSON.stringify(error));
+					this.showToast('通过云函数加载我发出的邀请列表失败: ' + (error && error.message ? error.message : JSON.stringify(error)));
 					this.globalData.invite_list = [];
 				} finally {
 					this.inviteLoading = false;
@@ -685,6 +601,27 @@
 		background-color: #f7f7f7;
 		min-height: 100vh;
 		padding-bottom: 40rpx;
+		position: relative;
+	}
+
+	.back-button {
+		position: fixed;
+		top: 50rpx;
+		left: 30rpx;
+		width: 60rpx;
+		height: 60rpx;
+		background-color: rgba(255, 255, 255, 0.9);
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		z-index: 999;
+
+		.diygw-icon {
+			font-size: 32rpx;
+			color: #333;
+		}
 	}
 
 	.page-header {

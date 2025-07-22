@@ -6,7 +6,7 @@
 			<view class="avatar-container">
 				<view class="diygw-avatar xl radius bg-none">
 					<image v-if="globalData.user.avatar" mode="aspectFit" class="diygw-avatar-img radius" :src="globalData.user.avatar"></image>
-					<view v-else class="diygw-avatar-img radius default-avatar">{{ globalData.user.real_name ? globalData.user.real_name.substring(0, 1) : 'U' }}</view>
+					<image v-else mode="aspectFit" class="diygw-avatar-img radius" src="/static/profile/default.png"></image>
 				</view>
 			</view>
 
@@ -77,7 +77,8 @@
 				class="flex flex-wrap diygw-col-24 flex-direction-column flex7-clz"
 				@tap="navigateToProjectDetail(item)">
 				<view class="flex flex-wrap diygw-col-24 items-stretch">
-					<view class="flex flex-wrap diygw-col-0 flex-direction-column justify-between flex6-clz">
+					<view class="flex flex-wrap flex-direction-column justify-between"
+						:class="hasProjectImage(item) ? 'diygw-col-0 flex6-clz' : 'diygw-col-24'">
 						<view class="flex flex-wrap diygw-col-0 items-center">
 							<text class="diygw-col-0 text3-clz">{{ item.title }}</text>
 						</view>
@@ -87,15 +88,23 @@
 							<text class="diygw-col-0 text6-clz">{{ item.type || '科技创新' }}</text>
 						</view>
 					</view>
-					<image :src="getProjectImage(item)" class="image2-size diygw-image diygw-col-0 image2-clz" mode="widthFix"></image>
+					<!-- 只有当项目有图片时才显示图片 -->
+					<image v-if="hasProjectImage(item)" :src="getProjectImage(item)" class="image2-size diygw-image diygw-col-0 image2-clz" mode="widthFix"></image>
 				</view>
 				<view class="flex flex-wrap diygw-col-24 justify-between items-center flex12-clz">
 					<view class="flex flex-wrap diygw-col-0 items-center description-container">
 						<text class="diygw-col-0">简介：</text>
 						<text class="diygw-col-0 description-text">{{ getProjectDescription(item) }}</text>
 					</view>
+					<view class="flex flex-wrap diygw-col-0 items-center">
+						<text class="flex icon diygw-col-0 diy-icon-attention"></text>
+						<text class="diygw-col-0">{{ item.view_count || 0 }}</text>
+					</view>
 				</view>
 				<view class="flex flex-wrap diygw-col-24 justify-between items-center flex15-clz">
+					<view class="flex flex-wrap diygw-col-0 items-center">
+						<text class="diygw-col-0">截止：{{ endingDateReturnFunction({ ending_time: item.ending_time }) }}</text>
+					</view>
 					<view class="flex flex-wrap diygw-col-0 items-center">
 						<text class="diygw-col-0">需求{{ item.current_members || 0 }}/{{ item.person_needed || 0 }}人 · {{ item.current_person_request || 0 }}人申请</text>
 					</view>
@@ -325,6 +334,24 @@
 				return this.projectTypeImages[type] || '/static/cxcp.png';
 			},
 
+			// 判断项目是否有实际图片（非分类图标）
+			hasProjectImage(item) {
+				if (!item) return false;
+
+				// 检查项目的图片数组
+				if (item.images && item.images.length > 0) {
+					return true;
+				}
+
+				// 检查缓存的项目图片
+				if (item._id && this.projectImages[item._id]) {
+					return true;
+				}
+
+				// 没有实际项目图片
+				return false;
+			},
+
 			// 获取项目图片，优先使用项目图片，如果没有则使用类型图片
 			getProjectImage(item) {
 				if (item && item._id && this.projectImages[item._id]) {
@@ -333,6 +360,24 @@
 
 				// 如果没有项目图片，使用分类图标
 				return this.getProjectTypeImage(item.type);
+			},
+
+			// 格式化截止日期并显示是否过期
+			endingDateReturnFunction(param) {
+				let ending_time = param && (param.ending_time || param.ending_time == 0) ? param.ending_time : '';
+				if (!ending_time) return '';
+
+				try {
+					var date = this.$tools.formatDateTime(ending_time, 'YYYY-mm-dd HH:MM');
+					date += this.$tools.formatDateTime(ending_time, 'YYYY-mm-dd HH:MM') < this.$tools.getCurrentDateTime() ? '(已过期)' : '';
+					return date;
+				} catch (e) {
+					// 如果$tools不可用，使用简单的日期格式化
+					const d = new Date(ending_time);
+					const now = new Date();
+					const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+					return dateStr + (d < now ? '(已过期)' : '');
+				}
 			},
 
 			// 获取项目描述文本
@@ -405,15 +450,7 @@
 			height: 100%;
 		}
 
-		.default-avatar {
-			background-color: #07c160;
-			color: #ffffff;
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			font-size: 60rpx;
-			font-weight: bold;
-		}
+
 
 		.name-container {
 			width: 100%;

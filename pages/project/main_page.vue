@@ -13,6 +13,11 @@
 						  @tap="handleSearch">
 						搜索
 					</view>
+					<view style="color: #07c160 !important"
+						  class="diygw-tag margin-left-xs radius-xs"
+						  @tap="refreshList">
+						刷新
+					</view>
 				</view>
 			</view>
 			<!-- 当前筛选类型提示 -->
@@ -25,38 +30,56 @@
 		<view class="flex flex-wrap diygw-col-24 flex-direction-column">
 			<view class="flex diygw-col-24">
 				<view class="diygw-grid col-5">
-					<view class="diygw-grid-item" @tap="filterByType('项目协作')" :class="{'active-filter': currentFilter === '项目协作'}">
+					<!-- 动态渲染分类，如果没有获取到则使用默认分类 -->
+					<view v-if="projectCategories.length > 0"
+						  v-for="(category, index) in projectCategories.slice(0, 4)"
+						  :key="category._id"
+						  class="diygw-grid-item"
+						  @tap="filterByType(category.name)"
+						  :class="{'active-filter': currentFilter === category.name}">
 						<view class="diygw-grid-inner">
 							<view class="diygw-grid-icon diygw-avatar grid-icon-clz">
-								<image mode="aspectFit" class="diygw-avatar-img" src="/static/cxcp.png"></image>
+								<image mode="aspectFit" class="diygw-avatar-img" :src="getCategoryImage(category.name)"></image>
 							</view>
-							<view class="diygw-grid-title"> 项目协作 </view>
+							<view class="diygw-grid-title"> {{ category.name }} </view>
 						</view>
 					</view>
-					<view class="diygw-grid-item" @tap="filterByType('竞赛组队')" :class="{'active-filter': currentFilter === '竞赛组队'}">
-						<view class="diygw-grid-inner">
-							<view class="diygw-grid-icon diygw-avatar grid-icon-clz">
-								<image mode="aspectFit" class="diygw-avatar-img" src="/static/cy3.png"></image>
+
+					<!-- 如果没有获取到分类，使用默认分类 -->
+					<template v-else>
+						<view class="diygw-grid-item" @tap="filterByType('项目协作')" :class="{'active-filter': currentFilter === '项目协作'}">
+							<view class="diygw-grid-inner">
+								<view class="diygw-grid-icon diygw-avatar grid-icon-clz">
+									<image mode="aspectFit" class="diygw-avatar-img" src="/static/cxcp.png"></image>
+								</view>
+								<view class="diygw-grid-title"> 项目协作 </view>
 							</view>
-							<view class="diygw-grid-title"> 竞赛组队 </view>
 						</view>
-					</view>
-					<view class="diygw-grid-item" @tap="filterByType('科研招募')" :class="{'active-filter': currentFilter === '科研招募'}">
-						<view class="diygw-grid-inner">
-							<view class="diygw-grid-icon diygw-avatar grid-icon-clz">
-								<image mode="aspectFit" class="diygw-avatar-img" src="/static/dc.png"></image>
+						<view class="diygw-grid-item" @tap="filterByType('竞赛组队')" :class="{'active-filter': currentFilter === '竞赛组队'}">
+							<view class="diygw-grid-inner">
+								<view class="diygw-grid-icon diygw-avatar grid-icon-clz">
+									<image mode="aspectFit" class="diygw-avatar-img" src="/static/cy3.png"></image>
+								</view>
+								<view class="diygw-grid-title"> 竞赛组队 </view>
 							</view>
-							<view class="diygw-grid-title"> 科研招募 </view>
 						</view>
-					</view>
-					<view class="diygw-grid-item" @tap="filterByType('大创计划')" :class="{'active-filter': currentFilter === '大创计划'}">
-						<view class="diygw-grid-inner">
-							<view class="diygw-grid-icon diygw-avatar grid-icon-clz">
-								<image mode="aspectFit" class="diygw-avatar-img" src="/static/zh.png"></image>
+						<view class="diygw-grid-item" @tap="filterByType('科研招募')" :class="{'active-filter': currentFilter === '科研招募'}">
+							<view class="diygw-grid-inner">
+								<view class="diygw-grid-icon diygw-avatar grid-icon-clz">
+									<image mode="aspectFit" class="diygw-avatar-img" src="/static/dc.png"></image>
+								</view>
+								<view class="diygw-grid-title"> 科研招募 </view>
 							</view>
-							<view class="diygw-grid-title"> 大创计划 </view>
 						</view>
-					</view>
+						<view class="diygw-grid-item" @tap="filterByType('大创计划')" :class="{'active-filter': currentFilter === '大创计划'}">
+							<view class="diygw-grid-inner">
+								<view class="diygw-grid-icon diygw-avatar grid-icon-clz">
+									<image mode="aspectFit" class="diygw-avatar-img" src="/static/zh.png"></image>
+								</view>
+								<view class="diygw-grid-title"> 大创计划 </view>
+							</view>
+						</view>
+					</template>
 					<view class="diygw-grid-item" @tap="navigateToUserList">
 						<view class="diygw-grid-inner">
 							<view class="diygw-grid-icon diygw-avatar grid-icon-clz">
@@ -74,7 +97,8 @@
 			class="flex flex-wrap diygw-col-24 flex-direction-column flex7-clz"
 			@tap="navigateToProjectDetail(item)">
 			<view class="flex flex-wrap diygw-col-24 items-stretch">
-				<view class="flex flex-wrap diygw-col-0 flex-direction-column justify-between flex6-clz">
+				<view class="flex flex-wrap flex-direction-column justify-between"
+					:class="hasProjectImage(item) ? 'diygw-col-0 flex6-clz' : 'diygw-col-24'">
 					<view class="flex flex-wrap diygw-col-0 items-center">
 						<text class="diygw-col-0 text3-clz">{{ item.title }}</text>
 					</view>
@@ -85,7 +109,8 @@
 						<text class="diygw-col-0 text6-clz">{{ item.project_cat ? item.project_cat.name : (item.type || '科技创新') }}</text>
 					</view>
 				</view>
-				<image :src="getProjectImage(item)" class="image2-size diygw-image diygw-col-0 image2-clz" mode="widthFix"></image>
+				<!-- 只有当项目有图片时才显示图片 -->
+				<image v-if="hasProjectImage(item)" :src="getProjectImage(item)" class="image2-size diygw-image diygw-col-0 image2-clz" mode="widthFix"></image>
 			</view>
 			<view class="flex flex-wrap diygw-col-24 justify-between items-center flex12-clz">
 				<view class="flex flex-wrap diygw-col-0 items-center description-container">
@@ -173,16 +198,13 @@
 			</view>
 		</view>
 	</view>
-		<!-- 加载更多区域 -->
+		<!-- 自动加载更多区域 -->
 		<view v-if="globalData.list.length > 0" class="load-more-area">
-			<view v-if="isLoading && currentPage > 1" class="loading-indicator">
-				<text>加载中...</text>
+			<view v-if="isLoading" class="loading-indicator">
+				<text>{{ currentPage > 1 ? '加载更多中...' : '加载中...' }}</text>
 			</view>
-			<view v-else-if="hasMore" class="load-more-btn" @tap="loadMore">
-				<text>加载更多</text>
-			</view>
-			<view v-else class="no-more-data">
-				<text>没有更多项目了</text>
+			<view v-else-if="!hasMore" class="no-more-data">
+				<text>已显示全部项目</text>
 			</view>
 		</view>
 
@@ -191,52 +213,48 @@
 </template>
 
 <script>
+	import {
+		useProjectStore
+	} from '@/stores/project.js';
+
 	export default {
 		data() {
 			return {
-				//用户全局信息
-				userInfo: {},
-				//页面传参
-				globalOption: {},
-				//自定义全局变量
-				globalData: {
-					list: [],
-					allProjects: [], // 存储所有项目，用于筛选
-					projectList: {},
-					showProjectDetail: {}
-				},
+				// 本地组件状态
 				search: '',
-				currentFilter: '', // 当前筛选的项目类型
-				projectTypeImages: {
-					'项目协作': '/static/zh.png',
-					'竞赛组队': '/static/cy3.png',
-					'科研招募': '/static/dc.png',
-					'大创计划': '/static/cxcp.png'
-				},
-				projectImages: {}, // 存储项目ID到图片URL的映射
-				creatorAvatars: {}, // 存储项目ID到创建者头像的映射
-				tabsDatas: [],
-				tabsIndex: 0,
+				self_introduce: '',
 				modal: '',
 				modal1: '',
-				self_introduce: '',
-				// 分页相关
-				pageSize: 10, // 每页显示的项目数量
-				currentPage: 1, // 当前页码
-				isLoading: false, // 是否正在加载
-				hasMore: true, // 是否还有更多数据
-				loadingImages: false, // 是否正在加载图片
-				loadingAvatars: false // 是否正在加载头像
+				globalData: {
+					list: [],
+					showProjectDetail: {}
+				},
+				currentFilter: '',
+				isLoading: false,
+				hasMore: true,
+				currentPage: 1,
+				// 缓存用户头像和项目图片
+				creatorAvatars: {},
+				projectImages: {},
+				// 项目类型对应的默认图片
+				projectTypeImages: {
+					'项目协作': '/static/cxcp.png',
+					'竞赛组队': '/static/cy3.png',
+					'科研招募': '/static/dc.png',
+					'大创计划': '/static/zh.png'
+				},
+				// 动态获取的项目分类
+				projectCategories: []
 			};
+		},
+		computed: {
+			// 不使用mapState，直接在data中管理状态
 		},
 		onShow() {
 			this.setCurrentPage(this);
-			// 只有在需要刷新时才重新加载项目数据
-			if (uni.getStorageSync('project_list_need_refresh')) {
-				console.log('检测到需要刷新项目列表');
-				uni.removeStorageSync('project_list_need_refresh');
-				this.getListFunction();
-			}
+			this.checkAndRefreshList();
+			// 更新消息tabbar徽标
+			this.updateMessageBadge();
 		},
 		onLoad(option) {
 			this.setCurrentPage(this);
@@ -245,235 +263,486 @@
 					globalOption: this.getOption(option)
 				});
 			}
-
+			// 直接调用init方法
 			this.init();
-
-			// 添加页面滚动监听
-			uni.onPageScroll(this.handlePageScroll);
 		},
 		onUnload() {
-			// 移除页面滚动监听
-			uni.offPageScroll(this.handlePageScroll);
+			this.isInitialized = false;
+			this.isLoading = false;
+			console.log('页面卸载，重置初始化状态');
+		},
+		onReachBottom() {
+			// 滚动到底部时自动加载更多
+			if (this.hasMore && !this.isLoading) {
+				console.log('触发自动加载更多');
+				this.loadMore();
+			}
+		},
+
+		onPullDownRefresh() {
+			// 下拉刷新
+			console.log('用户下拉刷新项目列表');
+			this.currentPage = 1;
+			this.hasMore = true;
+			this.getListFunction(false).finally(() => {
+				uni.stopPullDownRefresh();
+			});
 		},
 		methods: {
+			// 直接在页面中实现方法
 			async init() {
+				await this.loadProjectCategories(); // 先加载分类
 				await this.getListFunction();
 			},
-			async getListFunction(loadMore = false) {
+
+			// 加载项目分类
+			async loadProjectCategories() {
 				try {
-					// 如果不是加载更多，则重置分页参数
-					if (!loadMore) {
-						this.currentPage = 1;
-						this.hasMore = true;
-						this.globalData.list = [];
-						this.globalData.allProjects = [];
+					const res = await uniCloud.importObject('Initialize').getCategoryForAdd();
+					this.projectCategories = res.data.proj || [];
+				} catch (e) {
+					console.error('加载分类失败:', e);
+					this.projectCategories = [];
+				}
+			},
 
-						// 只在初始加载时显示全屏加载中
-						uni.showLoading({
-							title: '加载中...',
-							mask: true
-						});
+			// 检查并刷新列表
+			checkAndRefreshList() {
+				// 检查是否需要刷新项目列表
+				if (uni.getStorageSync('project_list_need_refresh')) {
+					console.log('检测到需要刷新项目列表');
+					uni.removeStorageSync('project_list_need_refresh');
+					this.currentPage = 1;
+					this.getListFunction(false);
+				}
 
-						// 获取项目类型列表
-						const catRes = await uniCloud.importObject('Initialize').getProjectCategory();
-						console.log('项目分类:', catRes.data);
+				// 检查是否有新项目发布的事件
+				const lastRefreshTime = uni.getStorageSync('project_list_last_refresh') || 0;
+				const currentTime = Date.now();
 
-						// 初始化项目列表数据结构
-						this.globalData.projectList = {};
-						this.tabsDatas = [];
+				// 如果超过30秒没有刷新，自动刷新一次
+				if (currentTime - lastRefreshTime > 30000) {
+					console.log('自动刷新项目列表');
+					uni.setStorageSync('project_list_last_refresh', currentTime);
+					this.currentPage = 1;
+					this.getListFunction(false);
+				}
+			},
 
-						// 为每个项目类型创建数据结构
-						for (const i in catRes.data) {
-							this.tabsDatas.push({
-								text: catRes.data[i].name,
-								icon: ''
-							});
-							this.globalData.projectList[catRes.data[i].name] = {
-								data: [],
-								load: 0
-							};
-						}
-					} else if (this.isLoading || !this.hasMore) {
-						// 如果正在加载或没有更多数据，则直接返回
-						return;
-					}
+			async getListFunction(loadMore = false) {
+				if (this.isLoading) return;
 
-					// 标记为正在加载
+				try {
 					this.isLoading = true;
+					console.log('开始获取项目列表...', loadMore ? '加载更多' : '初始加载');
 
-					// 使用分页参数获取项目数据
-					const projectsRes = await uniCloud.importObject('Project').getProjectsByPage({
-						page: this.currentPage,
-						pageSize: this.pageSize,
-						filter: this.currentFilter || ''
-					});
+					// 获取用户ID（如果已登录）
+					let userId = null;
+					try {
+						if (this.$session && this.$session.getUserValue) {
+							userId = this.$session.getUserValue('user_id');
+						}
+					} catch (e) {
+						console.log('获取用户ID失败，使用匿名访问');
+					}
 
-					console.log(`获取第 ${this.currentPage} 页项目数据:`, projectsRes);
+					// 调用支持分页的API，添加筛选参数
+					const requestData = {
+						user_id: userId,
+						page: loadMore ? this.currentPage : 1,
+						limit: 20 // 每页20个项目
+					};
 
-					if (projectsRes.status !== 1 || !Array.isArray(projectsRes.data)) {
-						console.error('获取项目列表失败:', projectsRes.msg);
-						uni.showToast({
-							title: projectsRes.msg || '获取项目列表失败',
-							icon: 'error'
-						});
-						this.isLoading = false;
-						// 只在初始加载时隐藏全屏加载
+					// 添加筛选条件 - 使用分类ID
+					if (this.currentFilter) {
+						// 根据分类名称找到对应的ID
+						const category = this.projectCategories.find(cat => cat.name === this.currentFilter);
+						if (category) {
+							requestData.filter_type_id = category._id;
+						}
+					}
+
+					// 添加搜索条件
+					if (this.search && this.search.trim()) {
+						requestData.search = this.search.trim();
+					}
+
+					const res = await uniCloud.importObject('Project').getListForMainPage(requestData);
+
+					console.log('云函数返回数据:', res);
+
+					// 详细检查返回的数据结构
+					if (res.data && res.data.length > 0) {
+						console.log('第一个项目的数据结构:', res.data[0]);
+						console.log('第一个项目的creator_avatar:', res.data[0].creator_avatar);
+						console.log('第一个项目的user_id:', res.data[0].user_id);
+					}
+
+					if (res.status === 1 && res.data) {
+						// 处理返回的数据，确保格式正确
+						const projectList = res.data.map(item => ({
+							...item,
+							// 确保有正确的字段映射
+							_id: item._id || item.id,
+							title: item.title || item.project_name || '未命名项目',
+							description: item.description || item.project_description || '',
+							creator_name: item.creator_name || '未知用户',
+							type_name: item.type_name || item.type || '项目协作',
+							person_needed: item.person_needed || 0,
+							create_time: item.create_time,
+							ending_time: item.ending_time,
+							in_project: item.in_project || false,
+							// 保持原始的creator_avatar值，不设置默认值
+							creator_avatar: item.creator_avatar || '',
+							project_image: item.project_image || '/static/default.png'
+						}));
+
+						if (loadMore && this.currentPage > 1) {
+							// 加载更多时追加数据
+							this.globalData.list.push(...projectList);
+						} else {
+							// 初始加载时替换数据
+							this.globalData.list = projectList;
+						}
+
+						// 判断是否还有更多数据
+						this.hasMore = res.pagination ? res.pagination.hasMore : (projectList.length >= 20);
+
+						console.log(`成功加载 ${projectList.length} 个项目，总计 ${this.globalData.list.length} 个项目`);
+
+						// 异步加载用户头像和项目图片
+						this.loadCreatorAvatars(projectList);
+						this.loadProjectImages(projectList);
+
+					} else {
+						console.warn('API返回状态异常:', res.status, res.msg);
 						if (!loadMore) {
-							uni.hideLoading();
+							this.globalData.list = [];
 						}
-						return;
+						this.hasMore = false;
 					}
 
-					// 检查是否还有更多数据
-					this.hasMore = projectsRes.data.length === this.pageSize;
-
-					// 将新获取的项目添加到列表中
-					const newProjects = projectsRes.data;
-
-					// 确保按创建时间降序排序（最新的在最上面）
-					newProjects.sort((a, b) => {
-						// 如果是秒级时间戳，转换为毫秒级进行比较
-						const timeA = typeof a.create_time === 'number' ?
-							(a.create_time.toString().length <= 10 ? a.create_time * 1000 : a.create_time) : 0;
-						const timeB = typeof b.create_time === 'number' ?
-							(b.create_time.toString().length <= 10 ? b.create_time * 1000 : b.create_time) : 0;
-						return timeB - timeA; // 降序排序，最新的在前面
-					});
-
-					// 添加到全局项目列表，避免重复
-					const existingIds = new Set(this.globalData.allProjects.map(p => p._id));
-					const uniqueNewProjects = newProjects.filter(p => !existingIds.has(p._id));
-
-					console.log(`获取到 ${newProjects.length} 个项目，其中 ${uniqueNewProjects.length} 个是新项目`);
-
-					// 添加不重复的项目到全局列表
-					this.globalData.allProjects = [...this.globalData.allProjects, ...uniqueNewProjects];
-
-					// 更新显示列表
-					this.globalData.list = [...this.globalData.list, ...uniqueNewProjects];
-
-					// 按类型分组项目
-					for (const project of uniqueNewProjects) {
-						// 尝试从多个可能的字段获取分类名称
-						let categoryName = null;
-
-						// 优先使用project_cat.name
-						if (project.project_cat && project.project_cat.name) {
-							categoryName = project.project_cat.name;
-						}
-						// 其次尝试使用type字段
-						else if (project.type && typeof project.type === 'string' &&
-								 this.globalData.projectList[project.type]) {
-							categoryName = project.type;
-						}
-						// 最后尝试使用type_name字段
-						else if (project.type_name && typeof project.type_name === 'string' &&
-								 this.globalData.projectList[project.type_name]) {
-							categoryName = project.type_name;
-						}
-
-						// 如果找到有效的分类名称，添加到对应分类
-						if (categoryName && this.globalData.projectList[categoryName]) {
-							// 检查是否已存在于该分类中
-							const existsInCategory = this.globalData.projectList[categoryName].data.some(
-								p => p._id === project._id
-							);
-
-							if (!existsInCategory) {
-								this.globalData.projectList[categoryName].data.push(project);
-								this.globalData.projectList[categoryName].load = 1;
-							}
-						}
-					}
-
-					// 获取新项目的ID
-					const projectIds = newProjects.map(project => project._id);
-
-					// 增加页码
-					this.currentPage++;
-
-					// 标记为加载完成
-					this.isLoading = false;
-
-					// 只在初始加载时隐藏全屏加载
-					if (!loadMore) {
-						uni.hideLoading();
-					}
-
-					// 延迟加载图片和头像
-					setTimeout(() => {
-						this.loadProjectImages(projectIds);
-					}, 500);
-
-					console.log(`已加载 ${this.globalData.list.length} 个项目`);
 				} catch (error) {
-					console.error('获取项目数据失败:', error);
-					this.isLoading = false;
-					// 只在初始加载时隐藏全屏加载
-					if (!loadMore) {
-						uni.hideLoading();
-					}
+					console.error('获取项目列表失败:', error);
+
 					uni.showToast({
 						title: '获取项目列表失败',
-						icon: 'error'
+						icon: 'none',
+						duration: 3000
+					});
+
+					if (!loadMore) {
+						this.globalData.list = [];
+					}
+					this.hasMore = false;
+
+				} finally {
+					this.isLoading = false;
+				}
+			},
+
+			handleSearch() {
+				console.log('搜索项目:', this.search);
+				this.currentPage = 1; // 重置分页
+				this.hasMore = true; // 重置加载更多状态
+				this.getListFunction(false); // 重新加载，不是加载更多
+			},
+
+			refreshList() {
+				console.log('手动刷新项目列表');
+				this.currentPage = 1;
+				this.hasMore = true;
+				this.getListFunction(false);
+
+				uni.showToast({
+					title: '刷新中...',
+					icon: 'loading',
+					duration: 1000
+				});
+			},
+
+
+
+			filterByType(type) {
+				console.log('按类型筛选:', type);
+				// 切换筛选状态
+				this.currentFilter = this.currentFilter === type ? '' : type;
+				this.currentPage = 1;
+				this.hasMore = true;
+				this.getListFunction(false);
+			},
+
+			clearFilter() {
+				console.log('清除筛选');
+				this.currentFilter = '';
+				this.search = '';
+				this.currentPage = 1; // 重置分页
+				this.hasMore = true; // 重置加载更多状态
+				this.getListFunction(false); // 重新加载，不是加载更多
+			},
+
+			showProjectDetailFunction(project) {
+				console.log('跳转到项目详情页面:', project);
+				// 跳转到项目详情页面
+				uni.navigateTo({
+					url: `/pages/project/project_detail?id=${project._id}`
+				});
+			},
+
+			openRequestModalFunction() {
+				console.log('打开申请弹窗');
+				this.modal = '';
+				this.modal1 = 'show';
+				this.self_introduce = '';
+			},
+
+			async requestToJoinFunction() {
+				if (!this.self_introduce.trim()) {
+					uni.showToast({
+						title: '请填写自我介绍',
+						icon: 'none'
+					});
+					return;
+				}
+
+				try {
+					console.log('申请加入项目:', {
+						project: this.globalData.showProjectDetail,
+						introduce: this.self_introduce
+					});
+
+					// 这里应该调用实际的申请API
+					// const res = await uniCloud.importObject('ProjectAction').requestToJoin({...});
+
+					uni.showToast({
+						title: '申请已提交',
+						icon: 'success'
+					});
+
+					this.modal1 = '';
+					this.self_introduce = '';
+
+				} catch (error) {
+					console.error('申请失败:', error);
+					uni.showToast({
+						title: '申请失败，请重试',
+						icon: 'none'
 					});
 				}
 			},
-			// 获取项目创建者头像
-			getCreatorAvatar(item) {
-				if (!item) return '/static/profile/default.png';
 
-				const projectId = item._id;
+			async loadMore() {
+				if (!this.hasMore || this.isLoading) return;
 
-				// 优先使用已经获取到的creator_avatar属性
-				if (item.creator_avatar) {
-					return item.creator_avatar;
+				this.currentPage++;
+				await this.getListFunction(true); // 传入true表示加载更多
+			},
+
+			navigateToProjectDetail(project) {
+				console.log('导航到项目详情:', project);
+				this.showProjectDetailFunction(project);
+			},
+
+			navigateToUserList() {
+				console.log('导航到用户列表');
+				uni.navigateTo({
+					url: '/pages/user/list'
+				});
+			},
+
+			endingDateReturnFunction(param) {
+				let ending_time = param && (param.ending_time || param.ending_time == 0) ? param.ending_time : '';
+				if (!ending_time) return '';
+
+				try {
+					var date = this.$tools.formatDateTime(ending_time, 'YYYY-mm-dd HH:MM');
+					date += this.$tools.formatDateTime(ending_time, 'YYYY-mm-dd HH:MM') < this.$tools.getCurrentDateTime() ? '(已过期)' : '';
+					return date;
+				} catch (e) {
+					// 如果$tools不可用，使用简单的日期格式化
+					const d = new Date(ending_time);
+					return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+				}
+			},
+
+			getProjectDescription(project) {
+				// 优先使用 content_text（纯文本描述）
+				if (project.content_text) {
+					return project.content_text.length > 50 ?
+						project.content_text.substring(0, 50) + '...' :
+						project.content_text;
+				}
+
+				// 其次使用 description（可能包含HTML）
+				if (project.description) {
+					// 移除HTML标签，只保留文本
+					const textOnly = project.description.replace(/<[^>]*>/g, '');
+					return textOnly.length > 50 ?
+						textOnly.substring(0, 50) + '...' :
+						textOnly;
+				}
+
+				// 最后使用其他可能的描述字段
+				return project.project_description || '暂无简介';
+			},
+
+			getCreatorAvatar(project) {
+				if (!project) return '/static/profile/default.png';
+
+				const projectId = project._id;
+
+				// 优先使用已经获取到的creator_avatar属性（非空字符串）
+				if (project.creator_avatar && project.creator_avatar.trim() !== '') {
+					console.log(`项目 ${projectId} 使用creator_avatar:`, project.creator_avatar);
+					return project.creator_avatar;
 				}
 
 				// 其次使用缓存的创建者头像
 				if (projectId && this.creatorAvatars[projectId]) {
+					console.log(`项目 ${projectId} 使用缓存头像:`, this.creatorAvatars[projectId]);
 					return this.creatorAvatars[projectId];
 				}
 
-				// 其次检查avatar是否存在
-				if (item.avatar && item.avatar.url) {
-					return item.avatar.url;
+				// 如果项目有user_id字段，尝试异步加载用户头像
+				if (project.user_id && !this.creatorAvatars[projectId]) {
+					console.log(`项目 ${projectId} 异步加载用户头像，用户ID:`, project.user_id);
+					this.loadUserAvatar(project.user_id, projectId);
 				}
 
 				// 最后使用默认头像
+				console.log(`项目 ${projectId} 使用默认头像`);
 				return '/static/profile/default.png';
 			},
-			// 优化: 获取项目图片的方法
-			async loadProjectImages(projectIds) {
-				if (!projectIds || projectIds.length === 0) return;
-				if (this.loadingImages) return; // 防止重复加载
 
-				this.loadingImages = true;
+			// 判断项目是否有实际图片（非分类图标）
+			hasProjectImage(project) {
+				if (!project) return false;
+
+				// 检查项目的图片数组
+				if (project.images && project.images.length > 0) {
+					return true;
+				}
+
+				const projectId = project._id || project.project_id;
+
+				// 检查缓存的项目图片
+				if (projectId && this.projectImages[projectId]) {
+					return true;
+				}
+
+				// 没有实际项目图片
+				return false;
+			},
+
+			getProjectImage(project) {
+				if (!project) return '/static/cxcp.png';
+
+				// 优先使用项目的图片数组
+				if (project.images && project.images.length > 0) {
+					return project.images[0]; // 使用第一张图片
+				}
+
+				const projectId = project._id || project.project_id;
+
+				// 其次使用缓存的项目图片
+				if (projectId && this.projectImages[projectId]) {
+					return this.projectImages[projectId];
+				}
+
+				// 如果没有项目图片，使用分类图标
+				const categoryName = project.type_name || project.type;
+				return this.projectTypeImages[categoryName] || '/static/cxcp.png';
+			},
+
+			getCategoryImage(categoryName) {
+				return this.projectTypeImages[categoryName] || '/static/cxcp.png';
+			},
+
+			// 异步加载用户头像
+			async loadUserAvatar(userId, projectId) {
+				if (!userId || !projectId || this.creatorAvatars[projectId]) return;
 
 				try {
-					console.log('开始加载项目图片...');
-					// 批量处理项目，每5个为一组
-					const batchSize = 5;
+					const userResult = await uniCloud.importObject('User').getUserDetail({
+						user_id: userId
+					});
+
+					if (userResult.status === 1 && userResult.data) {
+						const avatarUrl = userResult.data.avatar || '/static/profile/default.png';
+						this.creatorAvatars[projectId] = avatarUrl;
+						this.$forceUpdate(); // 强制更新视图
+					} else {
+						this.creatorAvatars[projectId] = '/static/profile/default.png';
+					}
+				} catch (error) {
+					console.error(`获取用户 ${userId} 信息失败:`, error);
+					this.creatorAvatars[projectId] = '/static/profile/default.png';
+				}
+			},
+
+			// 批量加载创建者头像
+			async loadCreatorAvatars(projectList) {
+				if (!projectList || projectList.length === 0) return;
+
+				try {
+					console.log('开始批量加载创建者头像...');
+
+					// 收集需要加载头像的项目
+					const needLoadProjects = projectList.filter(project =>
+						project.user_id && !this.creatorAvatars[project._id]
+					);
+
+					if (needLoadProjects.length === 0) return;
+
+					// 批量异步加载
+					const promises = needLoadProjects.map(async (project) => {
+						try {
+							await this.loadUserAvatar(project.user_id, project._id);
+							return { projectId: project._id, success: true };
+						} catch (error) {
+							console.error(`获取项目 ${project._id} 创建者信息失败:`, error);
+							return { projectId: project._id, success: false };
+						}
+					});
+
+					await Promise.all(promises);
+					console.log('批量加载创建者头像完成');
+
+				} catch (error) {
+					console.error('批量加载创建者头像失败:', error);
+				}
+			},
+
+			// 批量加载项目图片
+			async loadProjectImages(projectList) {
+				if (!projectList || projectList.length === 0) return;
+
+				try {
+					console.log('开始批量加载项目图片...');
+
+					// 收集项目ID
+					const projectIds = projectList.map(project => project._id).filter(id => id);
+
+					if (projectIds.length === 0) return;
+
+					// 批量处理项目，每10个为一组
+					const batchSize = 10;
 					for (let i = 0; i < projectIds.length; i += batchSize) {
 						const batchIds = projectIds.slice(i, i + batchSize);
 
 						// 并行获取这一批项目的图片
 						const promises = batchIds.map(async (projectId) => {
-							// 如果已经有缓存，跳过
-							if (this.projectImages[projectId]) {
-								return { projectId, success: true };
-							}
-
 							try {
 								const result = await uniCloud.importObject('ProjectAction').getProjectImages({
 									project_id: projectId
 								});
 
 								if (result.status === 1 && result.data && result.data.length > 0) {
-									// 保存第一张图片的URL
+									// 只有当项目真正有图片时才保存到缓存
 									this.projectImages[projectId] = result.data[0].tempFileURL;
 									return { projectId, success: true };
 								}
+								// 如果项目没有图片，不在缓存中存储任何内容
 								return { projectId, success: false };
 							} catch (error) {
 								console.error(`获取项目 ${projectId} 图片失败:`, error);
@@ -482,569 +751,69 @@
 						});
 
 						await Promise.all(promises);
-
-						// 每批次加载后强制更新视图
-						this.$forceUpdate();
 					}
 
-					console.log('项目图片加载完成:', Object.keys(this.projectImages).length);
-
-					// 延迟加载创建者头像
-					setTimeout(() => {
-						this.loadCreatorAvatars(projectIds);
-					}, 300);
+					console.log('批量加载项目图片完成:', Object.keys(this.projectImages).length);
 
 				} catch (error) {
 					console.error('批量加载项目图片失败:', error);
-				} finally {
-					this.loadingImages = false;
 				}
 			},
-			// 优化: 批量获取创建者头像
-			async loadCreatorAvatars(projectIds) {
-				if (!projectIds || projectIds.length === 0) return;
-				if (this.loadingAvatars) return; // 防止重复加载
-
-				this.loadingAvatars = true;
-
+			// 更新消息tabbar徽标
+			updateMessageBadge() {
 				try {
-					console.log('开始获取创建者头像');
-					// 批量处理项目，每3个为一组
-					const batchSize = 3;
-					for (let i = 0; i < projectIds.length; i += batchSize) {
-						const batchIds = projectIds.slice(i, i + batchSize);
-
-						// 并行获取这一批项目的创建者信息
-						const promises = batchIds.map(async (projectId) => {
-							if (!projectId) return { projectId, success: false };
-
-							// 如果已经有缓存，跳过
-							if (this.creatorAvatars[projectId]) {
-								return { projectId, success: true };
-							}
-
-							try {
-								const result = await uniCloud.importObject('ProjectAction').getProjectCreator({
-									project_id: projectId
-								});
-
-								if (result && result.status === 1 && result.data) {
-									// 保存创建者头像
-									if (result.data.avatar) {
-										this.creatorAvatars[projectId] = result.data.avatar;
-
-										// 更新对应项目的创建者信息
-										const projectIndex = this.globalData.list.findIndex(p => p._id === projectId);
-										if (projectIndex !== -1) {
-											this.globalData.list[projectIndex].creator_name = result.data.name || '未知用户';
-											this.globalData.list[projectIndex].creator_avatar = result.data.avatar;
-											this.globalData.list[projectIndex].creator_intro = result.data.introduction || '';
-										}
-
-										return { projectId, success: true };
-									}
-								}
-								return { projectId, success: false };
-							} catch (error) {
-								console.error(`获取项目 ${projectId} 创建者信息失败:`, error);
-								return { projectId, success: false };
-							}
-						});
-
-						await Promise.all(promises);
-
-						// 每批次加载后强制更新视图
-						this.$forceUpdate();
-					}
-
-					console.log('创建者头像加载完成:', Object.keys(this.creatorAvatars).length);
-				} catch (error) {
-					console.error('批量加载创建者头像失败:', error);
-				} finally {
-					this.loadingAvatars = false;
-				}
-			},
-			// 修改: 获取项目图片的方法，优先使用项目图片
-			getProjectImage(item) {
-				if (item && item._id && this.projectImages[item._id]) {
-					return this.projectImages[item._id];
-				}
-
-				// 如果没有项目图片，使用分类图标
-				const categoryName = item?.project_cat?.name;
-				return this.projectTypeImages[categoryName] || '/static/cxcp.png';
-			},
-			getProjectTypeImage(type) {
-				return this.projectTypeImages[type] || '/static/cxcp.png';
-			},
-			getRequirements(item) {
-				const requirements = [];
-				if (item.student_type) requirements.push(item.student_type);
-				if (item.major) requirements.push(item.major);
-				if (item.skills) requirements.push(item.skills);
-				return requirements;
-			},
-
-			// 获取项目描述文本
-			getProjectDescription(item) {
-				// 优先使用项目详情中的description字段
-				if (item.detail && item.detail.description) {
-					// 移除HTML标签，只保留纯文本
-					const plainText = item.detail.description.replace(/<[^>]+>/g, '');
-					return plainText.length > 50 ? plainText.substring(0, 50) + '...' : plainText;
-				}
-
-				// 直接使用description字段
-				if (item.description) {
-					// 移除HTML标签，只保留纯文本
-					const plainText = item.description.replace(/<[^>]+>/g, '');
-					return plainText.length > 50 ? plainText.substring(0, 50) + '...' : plainText;
-				}
-
-				// 其次使用content_text字段
-				if (item.content_text) {
-					return item.content_text.length > 50 ? item.content_text.substring(0, 50) + '...' : item.content_text;
-				}
-
-				// 最后使用项目要求作为备选
-				const requirements = this.getRequirements(item);
-				if (requirements.length > 0) {
-					return requirements.join('、');
-				}
-
-				return '暂无项目描述';
-			},
-			// 修改自实现日期格式化函数，处理秒级时间戳
-			formatDateTime(timestamp, format) {
-				if (!timestamp) return '';
-
-				try {
-					// 关键修改：判断时间戳类型并转换
-					let timeMs;
-					if (typeof timestamp === 'number') {
-						// 如果是秒级时间戳（长度约为10位数），转换为毫秒级
-						timeMs = timestamp.toString().length <= 10 ? timestamp * 1000 : timestamp;
-					} else {
-						// 如果是字符串，尝试解析
-						timeMs = new Date(timestamp).getTime();
-					}
-
-					const date = new Date(timeMs);
-
-					// 检查日期是否有效
-					if (isNaN(date.getTime())) {
-						console.error('无效的日期格式:', timestamp);
-						return '日期格式错误';
-					}
-
-					const year = date.getFullYear();
-					const month = String(date.getMonth() + 1).padStart(2, '0');
-					const day = String(date.getDate()).padStart(2, '0');
-					const hours = String(date.getHours()).padStart(2, '0');
-					const minutes = String(date.getMinutes()).padStart(2, '0');
-
-					return format
-						.replace('YYYY', year)
-						.replace('mm', month)
-						.replace('dd', day)
-						.replace('HH', hours)
-						.replace('MM', minutes);
-				} catch (error) {
-					console.error('格式化日期出错:', error, timestamp);
-					return '日期格式错误';
-				}
-			},
-			// 获取当前日期时间字符串
-			getCurrentDateTime() {
-				const now = new Date();
-				const year = now.getFullYear();
-				const month = String(now.getMonth() + 1).padStart(2, '0');
-				const day = String(now.getDate()).padStart(2, '0');
-				const hours = String(now.getHours()).padStart(2, '0');
-				const minutes = String(now.getMinutes()).padStart(2, '0');
-
-				return `${year}-${month}-${day} ${hours}:${minutes}`;
-			},
-			// 修改后的截止日期函数
-			endingDateReturnFunction(param) {
-				try {
-					if (!param || !param.ending_time) {
-						return '未设置';
-					}
-
-					// 打印原始日期，用于调试
-					console.log('原始ending_time:', param.ending_time, typeof param.ending_time);
-
-					// 使用修改后的格式化函数
-					const date = this.formatDateTime(param.ending_time, 'YYYY-mm-dd HH:MM');
-
-					// 获取当前时间的字符串表示
-					const now = this.getCurrentDateTime();
-
-					// 比较是否过期
-					const isExpired = date < now;
-
-					return date + (isExpired ? '(已过期)' : '');
-				} catch (error) {
-					console.error('日期格式化错误:', error, param);
-					return '日期格式错误';
-				}
-			},
-			// 搜索功能
-			async handleSearch() {
-				if (!this.search.trim()) {
-					// 如果搜索框为空，根据当前筛选条件还原列表
-					if (this.currentFilter) {
-						this.filterByType(this.currentFilter);
-					} else {
-						this.globalData.list = this.globalData.allProjects;
-					}
-					return;
-				}
-
-				try {
-					const searchText = this.search.trim().toLowerCase();
-
-					// 在所有项目中搜索，而不是当前标签页
-					const filteredProjects = this.globalData.allProjects.filter(project => {
-						return project.title && project.title.toLowerCase().includes(searchText);
-					});
-
-					// 确保搜索结果仍然按创建时间降序排序
-					filteredProjects.sort((a, b) => {
-						// 如果是秒级时间戳，转换为毫秒级进行比较
-						const timeA = typeof a.create_time === 'number' ?
-							(a.create_time.toString().length <= 10 ? a.create_time * 1000 : a.create_time) : 0;
-						const timeB = typeof b.create_time === 'number' ?
-							(b.create_time.toString().length <= 10 ? b.create_time * 1000 : b.create_time) : 0;
-						return timeB - timeA; // 降序排序，最新的在前面
-					});
-
-					this.globalData.list = filteredProjects;
-
-					// 清除当前筛选状态，因为搜索结果可能跨越多个分类
-					this.currentFilter = '';
-
-					uni.showToast({
-						title: `找到 ${filteredProjects.length} 个项目`,
-						icon: 'none'
-					});
-				} catch (error) {
-					console.error('搜索失败:', error);
-					uni.showToast({
-						title: '搜索失败',
-						icon: 'error'
-					});
-				}
-			},
-			// 根据项目类型筛选
-			async filterByType(type) {
-				// 如果点击的是当前已筛选的类型，则取消筛选
-				if (this.currentFilter === type) {
-					// 使用clearFilter方法来取消筛选，确保去重
-					this.clearFilter();
-					return;
-				}
-
-				// 设置当前筛选类型
-				this.currentFilter = type;
-
-				try {
-					// 显示加载中
-					uni.showLoading({
-						title: '筛选中...',
-						mask: true
-					});
-
-					// 从已获取的项目列表中筛选对应类型的项目
-					const filteredProjects = this.globalData.allProjects.filter(project => {
-						// 检查项目分类信息
-						if (project.project_cat && project.project_cat.name === type) {
-							return true;
-						}
-						// 备用检查：如果项目有type字段且与筛选类型匹配
-						if (project.type === type) {
-							return true;
-						}
-						// 如果项目有type_name字段且与筛选类型匹配
-						if (project.type_name === type) {
-							return true;
-						}
-						return false;
-					});
-
-					// 确保筛选后的项目仍然按创建时间降序排序
-					filteredProjects.sort((a, b) => {
-						// 如果是秒级时间戳，转换为毫秒级进行比较
-						const timeA = typeof a.create_time === 'number' ?
-							(a.create_time.toString().length <= 10 ? a.create_time * 1000 : a.create_time) : 0;
-						const timeB = typeof b.create_time === 'number' ?
-							(b.create_time.toString().length <= 10 ? b.create_time * 1000 : b.create_time) : 0;
-						return timeB - timeA; // 降序排序，最新的在前面
-					});
-
-					// 更新显示列表
-					this.globalData.list = filteredProjects;
-
-					// 显示筛选结果
-					uni.showToast({
-						title: `已筛选 ${filteredProjects.length} 个${type}项目`,
-						icon: 'none'
-					});
-
-					uni.hideLoading();
-				} catch (error) {
-					console.error('筛选失败:', error);
-					uni.hideLoading();
-					uni.showToast({
-						title: '筛选失败',
-						icon: 'error'
-					});
-				}
-			},
-			clearFilter() {
-				this.currentFilter = '';
-
-				// 确保项目列表没有重复
-				const uniqueProjects = [];
-				const seenIds = new Set();
-
-				for (const project of this.globalData.allProjects) {
-					if (!seenIds.has(project._id)) {
-						uniqueProjects.push(project);
-						seenIds.add(project._id);
-					}
-				}
-
-				// 更新全局项目列表，确保没有重复
-				this.globalData.allProjects = uniqueProjects;
-
-				// 重新加载所有项目列表
-				this.globalData.list = uniqueProjects;
-
-				console.log(`显示所有项目，共 ${uniqueProjects.length} 个`);
-				uni.showToast({
-					title: `已显示所有项目 (${uniqueProjects.length})`,
-					icon: 'none'
-				});
-			},
-			// 添加新方法用于加载所有项目
-			async loadAllProjects() {
-				try {
-					// 显示加载中
-					uni.showLoading({
-						title: '加载中...',
-						mask: true
-					});
-
-					// 重新获取所有项目
-					const res = await uniCloud.importObject('Project').getAllProjects();
-
-					if (res.status === 0) {
-						console.error('获取项目列表失败:', res.msg);
-						uni.hideLoading();
-						uni.showToast({
-							title: res.msg || '获取项目列表失败',
-							icon: 'error'
-						});
-						return;
-					}
-
-					// 确保项目按创建时间降序排序
-					const allProjects = res.data;
-					allProjects.sort((a, b) => {
-						// 如果是秒级时间戳，转换为毫秒级进行比较
-						const timeA = typeof a.create_time === 'number' ?
-							(a.create_time.toString().length <= 10 ? a.create_time * 1000 : a.create_time) : 0;
-						const timeB = typeof b.create_time === 'number' ?
-							(b.create_time.toString().length <= 10 ? b.create_time * 1000 : b.create_time) : 0;
-						return timeB - timeA; // 降序排序，最新的在前面
-					});
-
-					// 更新项目列表
-					this.globalData.allProjects = allProjects;
-					this.globalData.list = allProjects;
-
-					console.log(`总共加载了 ${allProjects.length} 个项目`);
-
-					uni.hideLoading();
-				} catch (error) {
-					console.error('加载所有项目失败:', error);
-					uni.hideLoading();
-					uni.showToast({
-						title: '加载项目失败',
-						icon: 'error'
-					});
-				}
-			},
-			showAllProjectTypes() {
-				// 收集所有项目类型
-				const allTypes = new Set();
-				this.globalData.allProjects.forEach(project => {
-					if (project.project_cat && project.project_cat.name) {
-						allTypes.add(project.project_cat.name);
-					}
-				});
-
-				// 将Set转换为数组并排序
-				const typesArray = Array.from(allTypes).sort();
-
-				// 显示所有项目类型
-				if (typesArray.length > 0) {
-					uni.showModal({
-						title: '所有项目类型',
-						content: typesArray.join('\n'),
-						showCancel: false,
-						confirmText: '确定'
-					});
-				} else {
-					uni.showToast({
-						title: '没有找到项目类型',
-						icon: 'none'
-					});
-				}
-			},
-			// 切换分类时调用
-			async changeTabs(evt) {
-				let { index } = evt.currentTarget.dataset;
-				if (index == this.tabsIndex) return;
-				this.setData({
-					tabsIndex: index
-				});
-				await this.getProjectListFunction({}); // 使用新的方法获取项目
-			},
-			// 展现项目详情
-			async showProjectDetailFunction(param) {
-				try {
-					const index = param.index;
-					console.log('显示项目详情:', param.id, index);
-
-					this.globalData.showProjectDetail = this.globalData.list[index];
-
-					if (!this.globalData.showProjectDetail.hasOwnProperty('detail')) {
-						const res = await uniCloud.importObject('Project').getDetailFromList({
-							id: param.id
-						});
-
-						if (res.status == 0) {
-							uni.showToast({
-								title: res.msg,
-								icon: 'error',
-								duration: 2000
-							});
-							return;
-						}
-
-						this.globalData.showProjectDetail['detail'] = res.data;
-					}
-
-					// 打开详情模态框
-					this.modal = 'show';
-				} catch (error) {
-					console.error('获取项目详情失败:', error);
-					uni.showToast({
-						title: '获取项目详情失败',
-						icon: 'error'
-					});
-				}
-			},
-			// 打开申请加入模块
-			async openRequestModalFunction() {
-				if (!this.$session.getToken()) {
-					uni.showToast({
-						title: '请先登录',
-						icon: 'none'
-					});
-					this.navigateTo({
-						type: 'page',
-						url: '/pages/sign/login'
-					});
-					return;
-				}
-
-				this.modal = '';
-				this.modal1 = 'show';
-			},
-			// 申请加入项目
-			async requestToJoinFunction() {
-				try {
-					const res = await uniCloud.importObject('ProjectAction').requestJoin({
-						project_id: this.globalData.showProjectDetail._id,
-						introduce: this.self_introduce,
-						user_id: this.$session.getUserValue('user_id')
-					});
-
-					uni.showToast({
-						icon: res.status ? 'success' : 'error',
-						title: res.msg
-					});
-
-					if (res.status == 1) {
-						this.modal1 = '';
-						this.self_introduce = '';
+					// 检查用户是否已登录
+					const userInfo = uni.getStorageSync('userInfo');
+					if (userInfo && userInfo.user_id) {
+						// 调用全局方法更新徽标
+						getApp().updateMessageTabBarBadge();
 					}
 				} catch (error) {
-					console.error('申请加入失败:', error);
-					uni.showToast({
-						title: '申请加入失败',
-						icon: 'error'
-					});
+					console.error('更新消息徽标失败:', error);
 				}
 			},
-			// 秒timestamp 自定义方法
+
+			// 兼容性方法
+			setCurrentPage(page) {
+				// Vue3 不需要设置 $scope，直接用 this 即可
+			},
+			getOption(option) {
+				return option;
+			},
+			setData(data) {
+				Object.assign(this, data);
+			},
+
+			// 获取当前时间戳（毫秒）
 			secondFunction() {
-				const timestampMs = Date.now();
-				const timestampSeconds = Math.floor(timestampMs / 1000);
-				return timestampSeconds;
-			},
-			navigateToProjectDetail(item) {
-				// 跳转到项目详情页面
-				uni.navigateTo({
-					url: `/pages/project/project_detail?id=${item._id}`,
-					success: () => {
-						console.log('成功跳转到项目详情页');
-					},
-					fail: (err) => {
-						console.error('跳转到项目详情页失败:', err);
-						// 如果跳转失败，可以回退到原来的模态框显示方式
-						this.showProjectDetailFunction({id: item._id, index: this.globalData.list.findIndex(p => p._id === item._id)});
-					}
-				});
-			},
-			// 导航到用户列表页面
-			navigateToUserList() {
-				uni.navigateTo({
-					url: '/pages/user/list',
-					success: () => {
-						console.log('成功跳转到用户列表页');
-					},
-					fail: (err) => {
-						console.error('跳转到用户列表页失败:', err);
-						uni.showToast({
-							title: '跳转失败',
-							icon: 'error'
-						});
-					}
-				});
+				return Date.now();
 			},
 
-			// 处理页面滚动
-			handlePageScroll(e) {
-				// 获取页面高度
-				const windowHeight = uni.getSystemInfoSync().windowHeight;
-				// 如果已经加载了第一页数据，并且滚动到距离底部150px的位置，自动加载更多
-				if (this.currentPage > 1 && e.scrollTop + windowHeight + 150 >= e.scrollHeight && !this.isLoading && this.hasMore) {
-					this.loadMore();
+			// 处理导航和弹窗关闭
+			navigateTo(e) {
+				const dataset = e.currentTarget.dataset || {};
+				const type = dataset.type;
+				const id = dataset.id;
+				const url = dataset.url;
+
+				if (type === 'closemodal') {
+					if (id === 'modal') {
+						this.modal = '';
+					} else if (id === 'modal1') {
+						this.modal1 = '';
+					}
+				} else if (type === 'page' && url) {
+					uni.navigateTo({
+						url: url
+					});
 				}
 			},
 
-			// 加载更多数据
-			async loadMore() {
-				if (this.isLoading || !this.hasMore) return;
-
-				console.log('加载更多数据...');
-				await this.getListFunction(true);
-			},
+			// Swiper切换事件
+			changeSwiper1(evt) {
+				let swiper1Index = evt.detail.current;
+				this.setData({ swiper1Index });
+			}
 		}
 	};
 </script>

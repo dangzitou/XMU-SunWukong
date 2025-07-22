@@ -98,6 +98,8 @@
 		},
 		onShow() {
 			this.setCurrentPage(this);
+			// 更新消息tabbar徽标
+			this.updateMessageBadge();
 		},
 		onLoad(option) {
 			this.setCurrentPage(this);
@@ -112,6 +114,20 @@
 		methods: {
 			async init() {
 				await this.getNewsListFunction();
+			},
+
+			// 更新消息tabbar徽标
+			updateMessageBadge() {
+				try {
+					// 检查用户是否已登录
+					const userInfo = uni.getStorageSync('userInfo');
+					if (userInfo && userInfo.user_id) {
+						// 调用全局方法更新徽标
+						getApp().updateMessageTabBarBadge();
+					}
+				} catch (error) {
+					console.error('更新消息徽标失败:', error);
+				}
 			},
 			// 获取新闻列表
 			async getNewsListFunction() {

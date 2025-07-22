@@ -14,3 +14,42 @@ unpackage/dist/dev/
 
 # python
 *.pyc
+
+# 敏感配置文件
+siteinfo.js
+manifest.json
+
+# 云函数测试参数文件
+uniCloud-aliyun/cloudfunctions/**/**.param.js
+
+# IDE 配置文件
+.hbuilderx/
+.idea/
+.vscode/
+
+# 环境变量文件
+.env
+.env.local
+.env.production
+.env.development
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+
+# 系统文件
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# 构建输出
+dist/
+build/
+
+# 缓存文件
+.cache/
+.parcel-cache/

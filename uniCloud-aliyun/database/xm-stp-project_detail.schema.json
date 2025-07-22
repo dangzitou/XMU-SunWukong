@@ -104,6 +104,13 @@
             "title": "项目文字内容",
             "description": "项目的文字描述内容",
             "defaultValue": ""
+        },
+        "view_count": {
+            "bsonType": "int",
+            "title": "浏览量",
+            "description": "项目的查看次数",
+            "default": 0,
+            "minimum": 0
         }
     }
 }

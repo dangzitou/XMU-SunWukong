@@ -1,5 +1,10 @@
 <template>
 	<view class="container">
+		<!-- 返回按钮 -->
+		<view class="back-button" @tap="goBack">
+			<text class="diygw-icon diy-icon-left"></text>
+		</view>
+
 		<!-- 切换导航 -->
 		<view class="switch-nav">
 			<view class="switch-btn" :class="{'active': requestMode === 'received'}" @tap="changeRequestMode('received')">
@@ -174,6 +179,13 @@
 			this.init();
 		},
 		methods: {
+			// 返回上一页
+			goBack() {
+				uni.navigateBack({
+					delta: 1
+				});
+			},
+
 			async init() {
 				await this.checkLoginState();
 				
@@ -556,7 +568,7 @@
 							
 							try {
 								// 使用云对象完成整个拒绝申请流程，不再分开操作
-								const result = await uniCloud.importObject('ProjectAction').rejectUserRequest({
+								const result = await uniCloud.importObject('ProjectMember').rejectUserRequest({
 									project_id: item.project_id,
 									user_id: item.user_id,
 									operator_id: this.$session.getUserValue('user_id'), // 当前操作用户ID（项目创建者）
@@ -613,7 +625,7 @@
 								try {
 									// 使用云对象完成整个通过申请流程
 									// approveUserRequest函数会自动处理将用户添加到项目成员的逻辑
-									const result = await uniCloud.importObject('ProjectAction').approveUserRequest({
+									const result = await uniCloud.importObject('ProjectMember').approveUserRequest({
 										project_id: item.project_id,
 										user_id: item.user_id,
 										operator_id: this.$session.getUserValue('user_id') // 当前操作用户ID（项目创建者）
@@ -921,6 +933,27 @@
 		background-color: #f7f7f7;
 		min-height: 100vh;
 		padding-bottom: 40rpx;
+		position: relative;
+	}
+
+	.back-button {
+		position: fixed;
+		top: 50rpx;
+		left: 30rpx;
+		width: 60rpx;
+		height: 60rpx;
+		background-color: rgba(255, 255, 255, 0.9);
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		z-index: 999;
+
+		.diygw-icon {
+			font-size: 32rpx;
+			color: #333;
+		}
 	}
 	
 	.page-header {

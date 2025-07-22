@@ -1,0 +1,12 @@
+{
+  "name": "ProjectMember",
+  "dependencies": {
+    "identified": "file:../common/identified",
+    "project-history": "file:../common/project-history",
+    "timestamp": "file:../common/timestamp",
+    "b_project": "file:../common/b_project"
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

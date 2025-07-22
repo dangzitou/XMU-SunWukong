@@ -8,7 +8,7 @@
 					<!-- 头像图片可点击 -->
 					<view class="diygw-avatar lg radius bg-none" @tap="chooseAvatar">
 						<image v-if="userInfo.avatar" mode="aspectFit" class="diygw-avatar-img radius" :src="userInfo.avatar"></image>
-							<view v-else class="diygw-avatar-img radius default-avatar">{{ userInfo.real_name ? userInfo.real_name.substring(0, 1) : 'U' }}</view>
+						<image v-else mode="aspectFit" class="diygw-avatar-img radius" src="/static/profile/default.png"></image>
 					</view>
 					<button class="avatar-btn" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">点击更换头像</button>
 				</view>
@@ -17,7 +17,7 @@
 				<view v-else class="avatar-wrapper">
 					<view class="diygw-avatar lg radius bg-none" @tap="chooseAvatar">
 						<image v-if="userInfo.avatar" mode="aspectFit" class="diygw-avatar-img radius" :src="userInfo.avatar"></image>
-							<view v-else class="diygw-avatar-img radius default-avatar">{{ userInfo.real_name ? userInfo.real_name.substring(0, 1) : 'U' }}</view>
+						<image v-else mode="aspectFit" class="diygw-avatar-img radius" src="/static/profile/default.png"></image>
 					</view>
 					<view class="avatar-text" @tap="chooseAvatar">点击更换头像</view>
 				</view>
@@ -573,15 +573,7 @@
 		height: 100%;
 	}
 
-	.default-avatar {
-		background-color: #07c160;
-		color: #ffffff;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		font-size: 80rpx;
-		font-weight: bold;
-	}
+
 
 	.avatar-text {
 		margin-top: 20rpx;

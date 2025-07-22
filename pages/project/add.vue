@@ -92,10 +92,10 @@
 				ending_date: '',
 				minDate: '',
 				statusDatas: [
-					{ value: '0', label: '草稿箱', checked: true },
-					{ value: '1', label: '发布', checked: false }
+					{ value: '0', label: '草稿箱', checked: false },
+					{ value: '1', label: '发布', checked: true }
 				],
-				status: '0',
+				status: '1',
 				projectImages: [],
 				contentText: ''
 			};
@@ -491,6 +491,9 @@
 						icon: 'success',
 						duration: 1500,
 						success: () => {
+							// 设置项目列表需要刷新的标志
+							uni.setStorageSync('project_list_need_refresh', true);
+
 							// 通过事件通知应用内其他页面刷新数据
 							uni.$emit('project_added', {
 								id: res.data,

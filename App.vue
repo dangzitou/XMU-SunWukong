@@ -1,3 +1,7 @@
+<template>
+  <slot />
+</template>
+
 <script>
 	export default {
 		globalData: {
@@ -30,6 +34,43 @@
 				'/pages/project/detail/self174256853910309a8499c21'
 			],
 			userData: {}
+		},
+
+		// 全局方法：更新消息tabbar徽标
+		updateMessageTabBarBadge() {
+			// 获取消息计数并更新tabbar徽标
+			this.getMessageCount().then(totalCount => {
+				if (totalCount > 0) {
+					uni.setTabBarBadge({
+						index: 2, // 消息tab的索引
+						text: totalCount > 99 ? '99+' : totalCount.toString()
+					});
+				} else {
+					uni.removeTabBarBadge({
+						index: 2
+					});
+				}
+			}).catch(error => {
+				console.error('更新消息tabbar徽标失败:', error);
+			});
+		},
+
+		// 获取消息总计数
+		async getMessageCount() {
+			try {
+				const result = await uniCloud.callFunction({
+					name: 'get_message_count'
+				});
+
+				if (result.result && result.result.status === 1) {
+					const data = result.result.data;
+					return (data.invite_count || 0) + (data.request_count || 0) + (data.system_count || 0);
+				}
+				return 0;
+			} catch (error) {
+				console.error('获取消息计数失败:', error);
+				return 0;
+			}
 		}
 	};
 </script>

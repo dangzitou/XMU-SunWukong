@@ -110,43 +110,21 @@ exports.main = async (event, context) => {
 			case 'system':
 				// 系统消息 - 获取发给当前用户且状态为0(未读)的系统通知数量
 				try {
-					// 从项目通知表获取未读通知计数
-					try {
-						// 设置最高权限访问数据表
-						const admin_db = uniCloud.database();
-						admin_db.setUser({
-							role: ['admin']
-						});
-						
-						const noticesRes = await admin_db.collection('xm-stp-project-notification')
-							.where({
-								user_id: event.user_id,
-								status: 0 // 状态0表示未读
-							})
-							.count();
-						
-						console.log('项目通知查询结果:', JSON.stringify(noticesRes));
-						
-						// 获取计数
-						count = noticesRes.total || 0;
-						console.log('项目通知未读数量:', count);
-					} catch (adminErr) {
-						console.error('使用admin权限查询项目通知失败:', adminErr);
-						
-						// 尝试通过云函数调用获取通知计数
-						try {
-							const projectAction = uniCloud.importObject('ProjectAction');
-							const countRes = await projectAction.getUnreadNotificationCount({
-								user_id: event.user_id
-							});
-							
-							if (countRes && countRes.status === 1) {
-								count = countRes.count || 0;
-								console.log('通过ProjectAction获取的未读通知数量:', count);
-							}
-						} catch (cloudFnErr) {
-							console.error('通过云函数获取通知计数失败:', cloudFnErr);
-						}
+					console.log('开始查询系统通知计数，用户ID:', event.user_id);
+
+					// 直接通过云函数调用获取通知计数
+					const projectAction = uniCloud.importObject('ProjectAction');
+					const countRes = await projectAction.getUnreadNotificationCount({
+						user_id: event.user_id
+					});
+
+					console.log('ProjectAction返回的通知计数结果:', JSON.stringify(countRes));
+
+					if (countRes && countRes.status === 1) {
+						count = countRes.count || 0;
+						console.log('系统通知未读数量:', count);
+					} else {
+						console.log('获取系统通知计数失败:', countRes ? countRes.msg : '无返回结果');
 					}
 				} catch (err) {
 					console.error('查询系统消息时出错:', err);

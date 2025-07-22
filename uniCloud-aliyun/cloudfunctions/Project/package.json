@@ -4,7 +4,8 @@
     "b_project": "file:../common/b_project",
     "date": "file:../common/date",
     "project-history": "file:../common/project-history",
-    "identified": "file:../common/identified"
+    "identified": "file:../common/identified",
+    "timestamp": "file:../common/timestamp"
   },
   "extensions": {
     "uni-cloud-jql": {}

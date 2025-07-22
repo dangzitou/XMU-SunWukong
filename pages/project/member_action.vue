@@ -368,7 +368,7 @@
 						}
 					}
 
-					const res = await uniCloud.importObject('ProjectAction').manageMember({
+					const res = await uniCloud.importObject('ProjectMember').manageMember({
 						project_id: this.globalOption.id,
 						user_id: member.user_id,
 						operator_id: this.$session.getUserValue('user_id'),
@@ -646,7 +646,7 @@
 					});
 				}
 
-				const res = await uniCloud.importObject('ProjectAction').updateProjectMembers({
+				const res = await uniCloud.importObject('ProjectMember').updateProjectMembers({
 					data: data,
 					id: option.id,
 					user_id: this.$session.getUserValue('user_id')

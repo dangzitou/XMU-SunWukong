@@ -8,7 +8,7 @@
 					<view class="avatar-container">
 						<view class="diygw-avatar lg radius bg-none">
 							<image v-if="globalData.userDetail.avatar" mode="aspectFit" class="diygw-avatar-img radius" :src="globalData.userDetail.avatar"></image>
-								<view v-else class="diygw-avatar-img radius default-avatar">{{ globalData.userDetail.real_name ? globalData.userDetail.real_name.substring(0, 1) : 'U' }}</view>
+							<image v-else mode="aspectFit" class="diygw-avatar-img radius" src="/static/profile/default.png"></image>
 						</view>
 					</view>
 					<!-- 用户名 -->
@@ -138,6 +138,8 @@
 			this.setCurrentPage(this);
 
 			this.initShow();
+			// 更新消息tabbar徽标
+			this.updateMessageBadge();
 		},
 		onLoad(option) {
 			this.setCurrentPage(this);
@@ -153,6 +155,20 @@
 			async init() {},
 			async initShow() {
 				await this.checkLoginFunction();
+			},
+
+			// 更新消息tabbar徽标
+			updateMessageBadge() {
+				try {
+					// 检查用户是否已登录
+					const userInfo = uni.getStorageSync('userInfo');
+					if (userInfo && userInfo.user_id) {
+						// 调用全局方法更新徽标
+						getApp().updateMessageTabBarBadge();
+					}
+				} catch (error) {
+					console.error('更新消息徽标失败:', error);
+				}
 			},
 			// 检查登录 自定义方法
 			async checkLoginFunction(param) {
@@ -275,15 +291,7 @@
 		height: 100%;
 	}
 
-	.default-avatar {
-		background-color: #07c160;
-		color: #ffffff;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		font-size: 80rpx;
-		font-weight: bold;
-	}
+
 
 	.name-container {
 		width: 100%;

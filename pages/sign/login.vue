@@ -136,6 +136,11 @@
 										duration: 2000
 									});
 
+									// 更新消息tabbar徽标
+									setTimeout(() => {
+										getApp().updateMessageTabBarBadge();
+									}, 500);
+
 									setTimeout(() => {
 										// 获取页面栈
 										const pages = getCurrentPages();
@@ -186,6 +191,12 @@
 					icon: 'success',
 					duration: 2000
 				});
+
+				// 更新消息tabbar徽标
+				setTimeout(() => {
+					getApp().updateMessageTabBarBadge();
+				}, 500);
+
 				setTimeout(function () {
 					// 获取页面栈
 					const pages = getCurrentPages();

@@ -1,0 +1,92 @@
+{
+    "bsonType": "object",
+    "required": [
+        "user_id",
+        "project_id"
+    ],
+    "permission": {
+        "read": true,
+        "create": "auth.uid != null",
+        "update": false,
+        "delete": false
+    },
+    "properties": {
+        "_id": {
+            "description": "ID，系统自动生成"
+        },
+        "user_id": {
+            "bsonType": "string",
+            "title": "用户ID",
+            "description": "浏览项目的用户ID",
+            "foreignKey": "xm-stp-user_detail._id"
+        },
+        "project_id": {
+            "bsonType": "string",
+            "title": "项目ID",
+            "description": "被浏览的项目ID",
+            "foreignKey": "xm-stp-project_detail._id"
+        },
+        "view_time": {
+            "bsonType": "timestamp",
+            "title": "浏览时间",
+            "description": "用户浏览项目的时间",
+            "forceDefaultValue": {
+                "$env": "now"
+            }
+        },
+        "ip_address": {
+            "bsonType": "string",
+            "title": "IP地址",
+            "description": "用户浏览时的IP地址",
+            "defaultValue": ""
+        },
+        "user_agent": {
+            "bsonType": "string",
+            "title": "用户代理",
+            "description": "用户浏览时的用户代理信息",
+            "defaultValue": ""
+        }
+    },
+    "index": [
+        {
+            "IndexName": "user_project_unique",
+            "MgoKeySchema": {
+                "MgoIndexKeys": [
+                    {
+                        "Name": "user_id",
+                        "Direction": "1"
+                    },
+                    {
+                        "Name": "project_id", 
+                        "Direction": "1"
+                    }
+                ],
+                "MgoIsUnique": true
+            }
+        },
+        {
+            "IndexName": "project_id_index",
+            "MgoKeySchema": {
+                "MgoIndexKeys": [
+                    {
+                        "Name": "project_id",
+                        "Direction": "1"
+                    }
+                ],
+                "MgoIsUnique": false
+            }
+        },
+        {
+            "IndexName": "view_time_index",
+            "MgoKeySchema": {
+                "MgoIndexKeys": [
+                    {
+                        "Name": "view_time",
+                        "Direction": "-1"
+                    }
+                ],
+                "MgoIsUnique": false
+            }
+        }
+    ]
+}

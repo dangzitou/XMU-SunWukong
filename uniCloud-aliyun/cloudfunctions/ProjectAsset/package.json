@@ -1,0 +1,12 @@
+{
+  "name": "ProjectAsset",
+  "dependencies": {
+    "b_project": "file:../common/b_project",
+    "identified": "file:../common/identified",
+    "project-history": "file:../common/project-history",
+    "timestamp": "file:../common/timestamp"
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

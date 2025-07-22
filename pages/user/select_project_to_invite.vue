@@ -1,10 +1,5 @@
 <template>
 	<view class="container container332681 safe-bottom">
-		<!-- 页面标题 -->
-		<view class="page-header">
-			<text class="page-title">选择要邀请的项目</text>
-		</view>
-
 		<!-- 项目列表 -->
 		<view class="project-list">
 			<view v-if="loading" class="loading-container">
@@ -181,7 +176,7 @@
 					console.log('用户创建的项目结果:', createdProjects);
 
 					// 2. 获取用户加入的所有项目
-					const joinedProjects = await uniCloud.importObject('ProjectAction').getJoinList({
+					const joinedProjects = await uniCloud.importObject('ProjectMember').getJoinList({
 						user_id: currentUserId
 					});
 
@@ -791,7 +786,7 @@
 						}, 2000);
 					} else {
 						uni.showToast({
-							title: '邀请发送失败',
+							title: res.msg,
 							icon: 'none'
 						});
 					}

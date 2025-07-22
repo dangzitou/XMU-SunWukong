@@ -151,7 +151,7 @@
 					// 如果不是创建者，检查是否有邀请权限
 					if (!hasPermission) {
 						// 获取用户在项目中的角色和权限
-						const memberRelations = await uniCloud.importObject('ProjectAction').getJoinList({
+						const memberRelations = await uniCloud.importObject('ProjectMember').getJoinList({
 							user_id: currentUserId,
 							project_id: projectId
 						});

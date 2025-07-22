@@ -56,6 +56,14 @@
 			"title": "是否有邀请权限",
 			"description": "该成员是否有权邀请其他人加入项目",
 			"defaultValue": false
+		},
+		"join_time": {
+			"bsonType": "timestamp",
+			"title": "加入时间",
+			"description": "成员加入项目的时间",
+			"forceDefaultValue": {
+				"$env": "now"
+			}
 		}
 	}
 }

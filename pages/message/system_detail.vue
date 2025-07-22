@@ -1,5 +1,10 @@
 <template>
 	<view class="container">
+		<!-- 返回按钮 -->
+		<view class="back-button" @tap="goBack">
+			<text class="diygw-icon diy-icon-left"></text>
+		</view>
+
 		<!-- 通知列表 -->
 		<view class="notice-list">
 
@@ -85,6 +90,13 @@
 			this.init();
 		},
 		methods: {
+			// 返回上一页
+			goBack() {
+				uni.navigateBack({
+					delta: 1
+				});
+			},
+
 			async init() {
 				await this.checkLoginState();
 
@@ -128,7 +140,7 @@
 
 					try {
 						// 使用云函数获取通知，这样可以避免权限问题
-						console.log('准备调用云函数 ProjectAction.getProjectNotifications');
+						console.log('准备调用云函数 ProjectNotification.getProjectNotifications');
 						const callData = {
 							method: 'getProjectNotifications',
 							data: {
@@ -138,7 +150,7 @@
 						console.log('调用云函数参数:', JSON.stringify(callData));
 
 						const res = await uniCloud.callFunction({
-							name: 'ProjectAction',
+							name: 'ProjectNotification',
 							data: callData
 						});
 
@@ -211,10 +223,10 @@
 						});
 
 						// 导入云对象
-						const projectAction = uniCloud.importObject('ProjectAction');
+						const projectNotification = uniCloud.importObject('ProjectNotification');
 
 						// 直接调用云对象方法
-						const result = await projectAction.markNotificationRead({
+						const result = await projectNotification.markNotificationRead({
 							notification_id: messageId,
 							user_id: this.$session.getUserValue('user_id')
 						});
@@ -272,10 +284,10 @@
 						});
 
 						// 导入云对象
-						const projectAction = uniCloud.importObject('ProjectAction');
+						const projectNotification = uniCloud.importObject('ProjectNotification');
 
 						// 直接调用云对象方法
-						const result = await projectAction.markAllNotificationsRead({
+						const result = await projectNotification.markAllNotificationsRead({
 							notification_ids: unreadMessages,
 							user_id: this.$session.getUserValue('user_id')
 						});
@@ -320,7 +332,29 @@
 	.container {
 		background-color: #f7f7f7;
 		min-height: 100vh;
-		padding-bottom: 100rpx; /* 为底部操作栏留出空间 */
+		padding-bottom: calc(130rpx + constant(safe-area-inset-bottom)); /* 为底部操作栏留出空间，适配安全区域 */
+		padding-bottom: calc(130rpx + env(safe-area-inset-bottom)); /* iOS 11.0 之后 */
+		position: relative;
+	}
+
+	.back-button {
+		position: fixed;
+		top: 50rpx;
+		left: 30rpx;
+		width: 60rpx;
+		height: 60rpx;
+		background-color: rgba(255, 255, 255, 0.9);
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		z-index: 999;
+
+		.diygw-icon {
+			font-size: 32rpx;
+			color: #333;
+		}
 	}
 
 	/* 顶部导航栏 */
@@ -541,22 +575,29 @@
 		bottom: 0;
 		left: 0;
 		right: 0;
-		height: 100rpx;
+		padding: 20rpx 20rpx calc(20rpx + constant(safe-area-inset-bottom));
+		padding-bottom: calc(20rpx + env(safe-area-inset-bottom)); /* 适配底部安全区域 */
 		background-color: #ffffff;
 		box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		padding: 0 30rpx;
+		z-index: 100;
 	}
 
 	.btn-all-read {
-		background-color: #07c160;
-		color: #ffffff;
-		border-radius: 30rpx;
-		font-size: 28rpx;
-		height: 70rpx;
-		line-height: 70rpx;
-		width: 100%;
+		background-color: #07c160 !important;
+		color: #ffffff !important;
+		border-radius: 50rpx !important;
+		font-size: 32rpx !important;
+		height: 90rpx !important;
+		line-height: 90rpx !important;
+		width: 100% !important;
+		border: none !important;
+		text-align: center !important;
+		padding: 0 20rpx !important;
+		transition: all 0.3s ease !important;
+	}
+
+	.btn-all-read:active {
+		opacity: 0.8 !important;
+		transform: scale(0.98) !important;
 	}
 </style>
